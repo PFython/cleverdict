@@ -1,0 +1,17 @@
+Metadata-Version: 1.1
+Name: cleverdict
+Version: 0.1
+Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
+Home-page: https://github.com/pfython/cleverdict
+Author: Peter Fison
+Author-email: peter@southwestlondon.tv
+License: MIT
+Download-URL: https://github.com/pfython/cleverdict/archive/v_01.tar.gz
+Description: UNKNOWN
+Keywords: data,attribute,key,value,attributes,keys,values,database,utility,tool
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: License :: MIT License
+Classifier: Programming Language :: Python :: 3.8
