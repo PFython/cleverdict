@@ -8,6 +8,8 @@ The class also optionally triggers a ```.save()``` method (which you can adapt o
 
 
 ## Installation
+No dependencies.  Very lightweight:
+
     pip install cleverdict
 
 ## Quickstart
@@ -56,6 +58,9 @@ You can define pretty much any function you like and set it to automatically run
     >>> x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
     Notional save to database: .total = 6 <class 'int'>
     Notional save to database: .usergroup = Knights of Ni <class 'str'>
+    >>> x.life = 42
+    Notional save to database: .life = 42 <class 'int'>
+
 
 This example function appends all output to a file, which might be useful for debugging, auditing, or analysis over time:
 
@@ -65,7 +70,7 @@ This example function appends all output to a file, which might be useful for de
     "Notional save to database: .total = 6 <class 'int'>",
     "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
 
-**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will overwrite the ```.save()``` method of all previously created ```CleverDict``` objects as well.
+**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well.
 
 If you want to specify different ```.save()``` behaviours for different instances, consider creating sublasses that inherit from ```CleverDict``` and set a different
 ```.save()``` function for each subclass.

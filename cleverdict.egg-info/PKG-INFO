@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 0.2
+Version: 0.3
 Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
@@ -17,6 +17,8 @@ Description: # CleverDict
         
         
         ## Installation
+        No dependencies.  Very lightweight:
+        
             pip install cleverdict
         
         ## Quickstart
@@ -65,6 +67,9 @@ Description: # CleverDict
             >>> x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
             Notional save to database: .total = 6 <class 'int'>
             Notional save to database: .usergroup = Knights of Ni <class 'str'>
+            >>> x.life = 42
+            Notional save to database: .life = 42 <class 'int'>
+        
         
         This example function appends all output to a file, which might be useful for debugging, auditing, or analysis over time:
         
@@ -74,7 +79,7 @@ Description: # CleverDict
             "Notional save to database: .total = 6 <class 'int'>",
             "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
         
-        **NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will overwrite the ```.save()``` method of all previously created ```CleverDict``` objects as well.
+        **NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well.
         
         If you want to specify different ```.save()``` behaviours for different instances, consider creating sublasses that inherit from ```CleverDict``` and set a different
         ```.save()``` function for each subclass.
@@ -114,7 +119,7 @@ Description: # CleverDict
         ## Credits
         ```CleverDict``` was developed jointly by Peter Fison, Ruud van der Ham, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```, and ```CleverDict``` (originally called ```attr_dict``` - which is 'taken' on PyPi already) was born.
         
-Keywords: data,attribute,key,value,attributes,keys,values,database,utility,tool
+Keywords: data,attribute,key,value,attributes,keys,values,database,utility,tool,clever,dictionary,att,__getattr__,__setattr__,getattr,setattr
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers

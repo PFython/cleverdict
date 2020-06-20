@@ -11,7 +11,7 @@ from distutils.core import setup
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '0.2',
+  version = '0.3',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
   long_description=README,
@@ -20,7 +20,7 @@ setup(
   author_email = 'peter@southwestlondon.tv',
   url = 'https://github.com/pfython/cleverdict',
   download_url = 'https://github.com/pfython/cleverdict/archive/v_01.tar.gz',
-  keywords = ['data', 'attribute', 'key', 'value', 'attributes', 'keys', 'values', 'database', 'utility', 'tool'],
+  keywords = ['data', 'attribute', 'key', 'value', 'attributes', 'keys', 'values', 'database', 'utility', 'tool', "clever", "dictionary", "att", "__getattr__", "__setattr__", "getattr", "setattr"],
   install_requires=[],
   classifiers=[
     'Development Status :: 4 - Beta',
