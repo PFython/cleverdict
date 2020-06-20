@@ -4,7 +4,7 @@
 
 ```CleverDict``` is a hybrid Python data class which allows both ```object.attribute``` and ```dictionary['key']``` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary format into your objects... or vice versa... without having to write extra code just to handle the translation.
 
-The class also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your results to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to explicitly call your update function after single operation where attributes (might) change.
+The class also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your object's values to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to explicitly call your update function after every single operation where attributes (might) change.
 
 
 ## Installation
@@ -84,7 +84,7 @@ The example function above also appends output to a file, which you might want f
 
 **NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well.
 
-If you want to specify different ```.save()``` behaviours for different instances, consider creating sublasses that inherit from ```CleverDict``` and set a different
+If you want to specify different ```.save()``` behaviours for different objects, consider creating sublasses that inherit from ```CleverDict``` and set a different
 ```.save()``` function for each subclass e.g.:
 
     >>> class Type1(CleverDict): pass
@@ -100,7 +100,7 @@ When writing your own ```.save()``` function, you'll need to specify three argum
     ...     print("Ni!")
 
 
-* **self**
+* **self**: because we're dealing with objects and classes...
 * **name**: a valid Python ```.attribute``` name preferably, otherwise you'll only be able to access it using ```dictionary['key']``` notation later on.
 * **value**: anything
 
@@ -140,7 +140,7 @@ We'd love to see Pull Requests (and relevant tests) from other contributors, par
     4
     ```
 
-2. Although ```CleverDict``` does accept dictionary keys such as " " and "" and strings with characters not allowed in ```object.attribute``` names, it can't create the corresponding ```.attributes```. except if the first character is a number - it adds an underscore '_' to the attribute name).
+2. Although ```CleverDict``` does accept dictionary keys such as " " and "" and strings with characters not allowed in ```object.attribute``` names, it can't create the corresponding ```.attributes```. except if the first character is a number - it adds an underscore '_' to the attribute name:
 
 
     ```
@@ -150,9 +150,15 @@ We'd love to see Pull Requests (and relevant tests) from other contributors, par
     'One'
     ```
 
-    Is it worth creating other mappings e.g. replacing punctuation, spaces, and null strings somehow, or does that just over-complicate things when you can at least access the original keys through the dictionary?
+    Is it worth creating other mappings e.g. replacing punctuation, spaces, and null strings somehow, or does that just over-complicate things when you can at least access the original keys through the dictionary?  Maybe we can offer this as an option in future versions e.g.
+
+    ```
+    >>> x = CleverDict({1: "One"}, auto_key_names = True)
+    ```
 
 
 
 ## Credits
-```CleverDict``` was developed jointly by Peter Fison, Ruud van der Ham, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```, and ```CleverDict``` (originally called ```attr_dict``` - which is 'taken' on PyPi already) was born.
+```CleverDict``` was developed jointly by Peter Fison, Ruud van der Ham, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```, and ```CleverDict``` was born*.
+
+>(\*) ```CleverDict``` was originally called ```attr_dict``` but serveral confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully the current name raises a wry smile too...

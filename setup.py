@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '1.01',
+  version = '1.21',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
   long_description=README,
@@ -16,11 +16,11 @@ setup(
   author = 'Peter Fison',
   author_email = 'peter@southwestlondon.tv',
   url = 'https://github.com/pfython/cleverdict',
-    download_url = 'https://github.com/pfython/cleverdict/archive/v_1.01.tar.gz',
+    download_url = 'https://github.com/pfython/cleverdict/archive/v_1.2.tar.gz',
   keywords = ['data', 'attribute', 'key', 'value', 'attributes', 'keys', 'values', 'database', 'utility', 'tool', "clever", "dictionary", "att", "__getattr__", "__setattr__", "getattr", "setattr"],
   install_requires=[],
   classifiers=[
-    'Development Status :: 4 - Beta',
+    'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
     'Topic :: Software Development :: Object Brokering',
     'License :: OSI Approved :: MIT License',
