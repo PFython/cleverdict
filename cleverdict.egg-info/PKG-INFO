@@ -1,13 +1,15 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 1.21
+Version: 1.22
 Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT
-Download-URL: https://github.com/pfython/cleverdict/archive/v_1.21.tar.gz
+Download-URL: https://github.com/pfython/cleverdict/archive/v_1.22.tar.gz
 Description: # CleverDict
+        
+        ![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
         
         ## Overview
         
