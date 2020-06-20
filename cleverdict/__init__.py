@@ -1,3 +1,6 @@
+# __init__.py
+__version__ = "0.0.1"
+
 import collections
 
 class CleverDict(collections.UserDict):
@@ -67,3 +70,4 @@ def my_example_save_function(self, name: str = "", value: any = ""):
     print(output)
     with open("example.log","a") as file:
         file.write(output)
+
