@@ -1,5 +1,5 @@
 # __init__.py
-__version__ = "0.1"
+__version__ = "0.6"
 
 import collections
 
@@ -49,7 +49,7 @@ class CleverDict(collections.UserDict):
         return self.__class__.__name__ + '({' + ", ".join(f'{repr(k)}:{repr(v)}' for k,v in vars(self)['data'].items()) + '})'
 
     def __str__(self):
-        return "\n".join([f".{k} = {v} {type(v)}" for k,v in list(vars(x)['data'].items())])
+        return "\n".join([f".{k} = {v} {type(v)}" for k,v in list(vars(self)['data'].items())])
 
     __setattr__ = __setitem__
 
