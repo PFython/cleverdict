@@ -73,7 +73,7 @@ class Test_Save_Functionality():
         x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
         with open("example.log","r") as file:
             log = file.read()
-        assert log == "Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"
+        assert log == "Notional save to database: .total = 6 <class 'int'>Notional save to database: .usergroup = Knights of Ni <class 'str'>"
         self.delete_log()
 
     def test_save_on_update(self):
@@ -84,7 +84,7 @@ class Test_Save_Functionality():
         x.total += 1
         with open("example.log","r") as file:
             log = file.read()
-        assert log == "Notional save to database: .total = 7 <class 'int'>\n"
+        assert log == "Notional save to database: .total = 7 <class 'int'>"
         self.delete_log()
 
 class MyClass(CleverDict):
