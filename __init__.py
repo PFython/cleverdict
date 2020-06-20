@@ -1,6 +1,4 @@
 # __init__.py
-
-# Version of the realpython-reader package
-__version__ = "1.0.0"
+__version__ = "0.0.1"
 
 from __main__ import CleverDict, my_example_save_function
