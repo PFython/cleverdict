@@ -1,6 +1,6 @@
 # CleverDict
 
-![](https://twitter.com/InspiringThinkn/status/929220940025626625/photo/1)
+![simplicity](https://twitter.com/InspiringThinkn/status/929220940025626625/photo/1)
 
 ## Overview
 
