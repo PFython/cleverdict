@@ -1,17 +1,13 @@
 import pathlib
-from setuptools import setup
+from distutils.core import setup
+
 HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
-# setup(
-#   zip_safe=False
-# )
-
-from distutils.core import setup
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '0.3',
+  version = '0.1',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
   long_description=README,
@@ -25,7 +21,7 @@ setup(
   classifiers=[
     'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
-    'Topic :: Software Development :: Build Tools',
+    'Topic :: Software Development :: Object Brokering',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3.8',
   ],
