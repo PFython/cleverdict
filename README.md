@@ -1,6 +1,5 @@
 # CleverDict
-
-![](https://twitter.com/InspiringThinkn/status/929220940025626625/photo/1)
+![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
 
 ## Overview
 
