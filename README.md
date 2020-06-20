@@ -47,6 +47,7 @@ Regardless of which syntax you use, new values are immediately available via bot
     >>> x.life += 1
     >>> x['life']
     43
+
     >>> del x['life']
     >>> x.life
     # KeyError: 'life'
@@ -138,11 +139,12 @@ We'd love to see Pull Requests (and relevant tests) from other contributors, par
     >>> mdt['hour']
     4
     ```
+
 2. Although ```CleverDict``` does accept dictionary keys such as " " and "" and strings with characters not allowed in ```object.attribute``` names, it can't create the corresponding ```.attributes```. except if the first character is a number - it adds an underscore '_' to the attribute name).
 
 
     ```
-    >>> x = CleverDict(1: "One")
+    >>> x = CleverDict({1: "One"})
 
     >>> x._1
     'One'

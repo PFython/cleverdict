@@ -6,7 +6,7 @@ Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT
-Download-URL: https://github.com/pfython/cleverdict/archive/v_1.1.tar.gz
+Download-URL: https://github.com/pfython/cleverdict/archive/v_1.01.tar.gz
 Description: # CleverDict
         
         ## Overview
@@ -56,6 +56,7 @@ Description: # CleverDict
             >>> x.life += 1
             >>> x['life']
             43
+        
             >>> del x['life']
             >>> x.life
             # KeyError: 'life'
@@ -147,11 +148,12 @@ Description: # CleverDict
             >>> mdt['hour']
             4
             ```
+        
         2. Although ```CleverDict``` does accept dictionary keys such as " " and "" and strings with characters not allowed in ```object.attribute``` names, it can't create the corresponding ```.attributes```. except if the first character is a number - it adds an underscore '_' to the attribute name).
         
         
             ```
-            >>> x = CleverDict(1: "One")
+            >>> x = CleverDict({1: "One"})
         
             >>> x._1
             'One'
