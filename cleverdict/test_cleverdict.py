@@ -58,24 +58,33 @@ class Test_Core_Functionality():
         assert x['life'] == 42
 
 class Test_Save_Functionality():
+
+    def delete_log(self):
+        try:
+            os.remove("example.log")
+        except FileNotFoundError:
+            pass
+
     def test_save_on_creation(self):
         """ Once set, CleverDict.save should be called on creation """
         CleverDict.save = my_example_save_function
-        os.remove("example.log")
+        self.delete_log()
         x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
         with open("example.log","r") as file:
             log = file.read()
         assert log == "Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"
+        self.delete_log()
 
     def test_save_on_update(self):
         """ Once set, CleverDict.save should be called after updates """
         x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
-        os.remove("example.log")
+        self.delete_log()
         CleverDict.save = my_example_save_function
         x.total += 1
         with open("example.log","r") as file:
             log = file.read()
         assert log == "Notional save to database: .total = 7 <class 'int'>\n"
+        self.delete_log()
 
 class MyClass(CleverDict):
     def __init__(self,id):

@@ -1,2 +1,0 @@
-validators
-beautifulsoup4

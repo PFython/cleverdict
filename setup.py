@@ -27,10 +27,7 @@ setup(
   url = 'https://github.com/pfython/cleverdict',
   download_url = 'https://github.com/pfython/cleverdict/archive/v_01.tar.gz',
   keywords = ['data', 'attribute', 'key', 'value', 'attributes', 'keys', 'values', 'database', 'utility', 'tool'],
-  install_requires=[
-          'validators',
-          'beautifulsoup4',
-      ],
+  install_requires=[],
   classifiers=[
     'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
