@@ -1,8 +1,5 @@
 # CleverDict
-<<<<<<< HEAD
-=======
 
->>>>>>> 53b891763c68baaea12b05652620ac23952fbdf6
 ![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
 
 ## Overview
