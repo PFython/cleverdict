@@ -10,6 +10,7 @@ class Test_Core_Functionality():
         assert x.total == 6
         assert x['total'] == 6
         assert x.usergroup == "Knights of Ni"
+        assert x['usergroup'] == "Knights of Ni"
 
     def test_creation_using_existing_UserDict(self):
         """ CleverDicts can be creates from existing UserDict objects """
@@ -38,12 +39,12 @@ class Test_Core_Functionality():
         assert x.subject == "Python"
         assert x['subject'] == "Python"
 
-    def test_conversion_of_numeric_attribute_name(self):
+    def test_conversion_of_invalid_attribute_name(self):
         """
         x.1 is an invalid attribute name in Python, so CleverDict
         will convert this to x._1
         """
-        x = CleverDict({1: "First Entry"})
+        x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
         assert x._1 == "First Entry"
 
     def test_value_change(self):

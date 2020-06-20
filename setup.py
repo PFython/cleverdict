@@ -2,16 +2,8 @@ import pathlib
 from setuptools import setup
 HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
+
 # setup(
-#   name="cleverdict",
-#   version="0.0.1",
-#   description="A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.",
-#   long_description=README,
-#   long_description_content_type="text/markdown",
-#   author="Peter Fison",
-#   author_email="peter@southwestlondon.tv",
-#   license="MIT",
-#   packages=["cleverdict"],
 #   zip_safe=False
 # )
 
@@ -19,9 +11,11 @@ from distutils.core import setup
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '0.1',
+  version = '0.2',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
+  long_description=README,
+  long_description_content_type="text/markdown",
   author = 'Peter Fison',
   author_email = 'peter@southwestlondon.tv',
   url = 'https://github.com/pfython/cleverdict',
@@ -39,3 +33,4 @@ setup(
 
 # Run the following from the command prompt:
 # python setup.py sdist
+# python -m twine upload --repository testpypi dist/*

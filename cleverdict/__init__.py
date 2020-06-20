@@ -1,5 +1,5 @@
 # __init__.py
-__version__ = "0.0.1"
+__version__ = "0.2"
 
 import collections
 
@@ -25,8 +25,10 @@ class CleverDict(collections.UserDict):
     save = None  # Custom 'save' function to call for all class instances
 
     def __setitem__(self, name, value):
-        if type(name) == int:  # Python objects can't have numeric attributes
+        # Attribute names in Python have some restrictions, so...
+        if type(name) == int or name == "":
             name = "_" + str(name)
+        # TODO: Further validation e.g. to handle keys like " ", "", "?"
         if name=='data':  # required because UserDict defines 'data' internally
             return super().__setattr__(name, value)
         super().__setitem__(name, value)
@@ -58,15 +60,8 @@ def my_example_save_function(self, name: str = "", value: any = ""):
     Specify this (or any other) function as the default 'save' function as follows:
 
     CleverDict.save = my_example_save_function
-
-    NB this works at the class level, so changing CleverDict.save will overwrite
-    the save method of all previously created CleverDict objects as well.
-
-    If you need to specify different .save functions for different instances,
-    consider creating sublasses that inherit from CleverDict and set a new
-    .save function for each subclass.
     """
-    output=f"Notional save to database: .{name} = {value} {type(value)}\n"
+    output=f"Notional save to database: .{name} = {value} {type(value)}"
     print(output)
     with open("example.log","a") as file:
         file.write(output)
