@@ -1,7 +1,23 @@
-from cleverdict import CleverDict, my_example_save_function
+from cleverdict import CleverDict
 import pytest
 import os
 from collections import UserDict
+
+def my_example_save_function(self, name: str = "", value: any = ""):
+    """
+    Example of a custom function which can be called by self._save()
+    whenever the value of a CleverDict instance is created or changed.
+
+    Required arguments are: self, name: str and value: any
+
+    Specify this (or any other) function as the default 'save' function as follows:
+
+    CleverDict.save = my_example_save_function
+    """
+    output=f"Notional save to database: .{name} = {value} {type(value)}"
+    print(output)
+    with open("example.log","a") as file:
+        file.write(output)
 
 class Test_Core_Functionality():
     def test_creation_using_existing_dict(self):

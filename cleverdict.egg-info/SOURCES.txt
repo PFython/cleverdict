@@ -1,6 +1,7 @@
 README.md
 setup.py
 cleverdict/__init__.py
+cleverdict/cleverdict.py
 cleverdict/test_cleverdict.py
 cleverdict.egg-info/PKG-INFO
 cleverdict.egg-info/SOURCES.txt
