@@ -1,5 +1,5 @@
 # __init__.py
-__version__ = "0.8"
+__version__ = "0.82"
 
 import collections
 

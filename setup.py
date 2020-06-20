@@ -1,6 +1,6 @@
 import pathlib
-# from setuptools import setup
-from distutils.core import setup
+from setuptools import setup
+# from distutils.core import setup
 
 HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '0.8',
+  version = '0.82',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
   long_description=README,
