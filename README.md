@@ -1,5 +1,7 @@
 # CleverDict
 
+![](https://twitter.com/InspiringThinkn/status/929220940025626625/photo/1)
+
 ## Overview
 
 ```CleverDict``` is a hybrid Python data class which allows both ```object.attribute``` and ```dictionary['key']``` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary format into your objects... or vice versa... without having to write extra code just to handle the translation.
