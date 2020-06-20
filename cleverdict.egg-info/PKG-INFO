@@ -13,5 +13,5 @@ Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers
 Classifier: Topic :: Software Development :: Build Tools
-Classifier: License :: MIT License
+Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3.8
