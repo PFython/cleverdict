@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '0.6',
+  version = '0.8',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
   long_description=README,
@@ -16,7 +16,7 @@ setup(
   author = 'Peter Fison',
   author_email = 'peter@southwestlondon.tv',
   url = 'https://github.com/pfython/cleverdict',
-    download_url = 'https://github.com/pfython/cleverdict/archive/v_0.6.tar.gz',
+    download_url = 'https://github.com/pfython/cleverdict/archive/v_0.8.tar.gz',
   keywords = ['data', 'attribute', 'key', 'value', 'attributes', 'keys', 'values', 'database', 'utility', 'tool', "clever", "dictionary", "att", "__getattr__", "__setattr__", "getattr", "setattr"],
   install_requires=[],
   classifiers=[
@@ -31,3 +31,4 @@ setup(
 # Run the following from the command prompt:
 # python setup.py sdist
 # python -m twine upload --repository testpypi dist/*
+# python -m twine upload --repository pypi dist/*
