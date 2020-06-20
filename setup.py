@@ -16,7 +16,7 @@ setup(
   author = 'Peter Fison',
   author_email = 'peter@southwestlondon.tv',
   url = 'https://github.com/pfython/cleverdict',
-  download_url = 'https://github.com/pfython/cleverdict/archive/v_06.tar.gz',
+    download_url = 'https://github.com/pfython/cleverdict/archive/v_0.6.tar.gz',
   keywords = ['data', 'attribute', 'key', 'value', 'attributes', 'keys', 'values', 'database', 'utility', 'tool', "clever", "dictionary", "att", "__getattr__", "__setattr__", "getattr", "setattr"],
   install_requires=[],
   classifiers=[
