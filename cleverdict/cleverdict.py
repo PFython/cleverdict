@@ -37,7 +37,7 @@ class CleverDict(collections.UserDict):
 
     def __getattr__(self, name):
         try:
-            return  collections.UserDict.__getitem__(self, name)
+            return self[name]
         except KeyError:
             raise AttributeError
 

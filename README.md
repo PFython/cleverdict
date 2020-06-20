@@ -6,7 +6,7 @@
 
 ```CleverDict``` is a hybrid Python data class which allows both ```object.attribute``` and ```dictionary['key']``` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary format into your objects... or vice versa... without having to write extra code just to handle the translation.
 
-The class also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your object's values to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to explicitly call your update function after every single operation where attributes (might) change.
+The class also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your object's values to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to slavishly call your update function after every single operation where attributes (might) change.
 
 
 ## Installation
@@ -61,7 +61,7 @@ You can import an existing object's data (but not its methods) directly using ``
     >>> list(x.items())
     [('total', 6), ('usergroup', 'Knights of Ni'), ('life', 42)]
 
-You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed.  There's an example function in ```cleverict.test_cleverdict``` which illustrates this option:
+You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates this:
 
     >>> from cleverdict.test_cleverdict import my_example_save_function
     >>> CleverDict.save = my_example_save_function
@@ -84,7 +84,7 @@ The example function above also appends output to a file, which you might want f
     "Notional save to database: .total = 6 <class 'int'>",
     "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
 
-**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well.
+**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well as future ones.
 
 If you want to specify different ```.save()``` behaviours for different objects, consider creating sublasses that inherit from ```CleverDict``` and set a different
 ```.save()``` function for each subclass e.g.:
@@ -163,4 +163,4 @@ We'd love to see Pull Requests (and relevant tests) from other contributors, par
 ## Credits
 ```CleverDict``` was developed jointly by Peter Fison, Ruud van der Ham, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```, and ```CleverDict``` was born*.
 
->(\*) ```CleverDict``` was originally called ```attr_dict``` but serveral confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully the current name raises a wry smile too...
+>(\*) ```CleverDict``` was originally called ```attr_dict``` but serveral confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully the new name raises a wry smile as well as being more memorable...
