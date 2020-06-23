@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 setup(
   name = 'cleverdict',
   packages = ['cleverdict'],
-  version = '1.3',
+  version = '1.31',
   license='MIT',
   description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
   long_description=README,
