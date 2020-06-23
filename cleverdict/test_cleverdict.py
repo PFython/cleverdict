@@ -12,7 +12,7 @@ def my_example_save_function(self, name: str = "", value: any = ""):
 
     Specify this (or any other) function as the default 'save' function as follows:
 
-    CleverDict.save = my_example_save_function
+    CleverDict._save = my_example_save_function
     """
     output=f"Notional save to database: .{name} = {value} {type(value)}"
     print(output)
@@ -55,13 +55,6 @@ class Test_Core_Functionality():
         assert x.subject == "Python"
         assert x['subject'] == "Python"
 
-    def test_conversion_of_invalid_attribute_name(self):
-        """
-        x.1 is an invalid attribute name in Python, so CleverDict
-        will convert this to x._1
-        """
-        x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
-        assert x._1 == "First Entry"
 
     def test_value_change(self):
         """ New attribute values should update dictionary keys & vice versa """
@@ -83,8 +76,8 @@ class Test_Save_Functionality():
             pass
 
     def test_save_on_creation(self):
-        """ Once set, CleverDict.save should be called on creation """
-        CleverDict.save = my_example_save_function
+        """ Once set, CleverDict._save should be called on creation """
+        CleverDict._save = my_example_save_function
         self.delete_log()
         x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
         with open("example.log","r") as file:
@@ -93,15 +86,51 @@ class Test_Save_Functionality():
         self.delete_log()
 
     def test_save_on_update(self):
-        """ Once set, CleverDict.save should be called after updates """
+        """ Once set, CleverDict._save should be called after updates """
         x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
         self.delete_log()
-        CleverDict.save = my_example_save_function
+        CleverDict._save = my_example_save_function
         x.total += 1
         with open("example.log","r") as file:
             log = file.read()
         assert log == "Notional save to database: .total = 7 <class 'int'>"
         self.delete_log()
+
+class Test_normalise():
+
+    def test_normalise(self):
+        """
+        Object attributes can't be empty, must start with a letter, and can
+        only contain numbers, letters or "_".
+
+        By default, CleverDict will attempt to normalise attribute names.
+        """
+        assert CleverDict.normalise
+        testcases = {2: "_2",
+                     None: "None",
+                     True: "True",
+                     False: "False",
+                     "": "_nullstring",
+                     " ": "_space",
+                     "two words": "two_words",
+                     "#punctuation?'!;,": "_punctuation_____"}
+        for testcase, expected_result in testcases.items():
+            x = CleverDict({testcase: "whatever"})
+            assert hasattr(x,expected_result)
+
+    def test_normalise_disabled(self):
+        CleverDict.normalise = False
+        testcases = {2: "_2",
+                "": "_nullstring",
+                " ": "_space",
+                "two words": "two_words",
+                "#punctuation?'!;,": "_punctuation_____"}
+        for testcase, expected_result in testcases.items():
+            x = CleverDict({testcase: "whatever"})
+            assert not hasattr(x,expected_result)
+            assert x.get(testcase)
+            assert not x.get(expected_result)
+        CleverDict.normalise = True
 
 class MyClass(CleverDict):
     def __init__(self,id):

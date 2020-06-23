@@ -1,5 +1,18 @@
 
 import collections
+import string
+
+def normalise(name):
+    """
+    Replaces all characters that are not letters, digits or _ with an underscore.  If the resulting string then starts with a digit or is empty, it prepends it with an underscore.
+    """
+    for case, replacement in {"": "_nullstring", " ": "_space"}.items():
+        name = replacement if name == case else name
+    name = str(name)
+    name = ''.join(c if c in string.ascii_letters + string.digits + '_' else '_' for c in name)
+    if not name or name[0] in string.digits:
+        name = '_' + name
+    return name
 
 class CleverDict(collections.UserDict):
     """
@@ -23,15 +36,13 @@ class CleverDict(collections.UserDict):
     from pythonistacafe.com, hoping to improve on a similar feature in Pandas.
     """
 
-    save = None  # Custom 'save' function to call for all class instances
+    normalise = True
 
-    def __setitem__(self, name, value):
-        # Attribute names in Python have some restrictions, so...
-        if type(name) == int or name == "":
-            name = "_" + str(name)
-        # TODO: Further validation e.g. to handle keys like " ", "", "?"
+    def __setitem__(self, name, value,):
         if name=='data':  # required because UserDict defines 'data' internally
             return super().__setattr__(name, value)
+        if CleverDict.normalise:
+            name = normalise(name)
         super().__setitem__(name, value)
         self._save(name,value)
 
@@ -42,9 +53,8 @@ class CleverDict(collections.UserDict):
             raise AttributeError
 
     def _save(self, name, value):
-        """ Notional database save  or other custom function called here """
-        if CleverDict.save:
-            CleverDict.save(self, name, value)
+        """ Notional database save or other custom function called here """
+        pass
 
     def __repr__(self):
         return self.__class__.__name__ + '({' + ", ".join(f'{repr(k)}:{repr(v)}' for k,v in vars(self)['data'].items()) + '})'
