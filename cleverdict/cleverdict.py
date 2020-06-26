@@ -219,10 +219,3 @@ if __name__ == "__main__":
     print(repr(x))
     y = eval(repr(x))
     print(x==y)
-
-Reply
-
-Ruud van der Ham
-Ruud
-20h
-@pfison
