@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 1.31
+Version: 1.4
 Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT
-Download-URL: https://github.com/pfython/cleverdict/archive/v_1.3.tar.gz
+Download-URL: https://github.com/pfython/cleverdict/archive/v_1.4.tar.gz
 Description: # CleverDict
         
         ![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
@@ -45,7 +45,16 @@ Description: # CleverDict
             >>> x['usergroup']
             'Knights of Ni'
         
-        ### 2. KEYWORD ARGUMENTS
+        ### 2. DATA FROM OTHER OBJECTS
+        You can import an existing object's data (but not its methods) directly using ```vars()```:
+        
+            x = CleverDict(vars(my_existing_object))
+        
+            >>> list(x.items())
+            [('total', 6), ('usergroup', 'Knights of Ni'), ('life', 42)]
+        
+        
+        ### 3. KEYWORD ARGUMENTS
         You can also supply keyword arguments like this:
         
             >>> x = CleverDict(created = "today", review = "tomorrow")
@@ -54,6 +63,13 @@ Description: # CleverDict
             'today'
             >>> x['review']
             'tomorrow'
+        
+        Or using ```.fromkeys()``` like this:
+        
+            >>> x = CleverDict().fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
+        
+            >>> x
+            CleverDict([('Abigail', 'Year 9'), ('Tino', 'Year 9'), ('Isaac', 'Year 9')])
         
         Regardless of which syntax you use, new values are immediately available via both methods:
         
@@ -66,20 +82,28 @@ Description: # CleverDict
             >>> x.life
             # KeyError: 'life'
         
-        ### 3. NORMALISATION
-        By default ```CleverDict``` attempts to normalise keys such as " " and "" and strings with characters not normally allowed in ```object.attribute``` names.  So for example ```1``` (integer) becomes ```"_1"``` (string):
         
+        ### 4. ATTRIBUTE NAMES AND ALIASES
         
-            >>> x = CleverDict({1: "One"})
+        By default ```CleverDict``` tries to find valid attribute names for dictionary keys which would otherwise fail.  This includes keywords, null strings, most punctuation marks, and keys starting with a numeral.  So for example ```7``` (integer) becomes ```"_7"``` (string):
         
-            >>> x._1
-            'One'
+            >>> x = CleverDict({7: "Seven"})
+        
+            >>> x._7
+            'Seven'
             >>> x
-            CleverDict({'_1':'One'})
+            CleverDict({'_7':'Seven'})
         
+        ```CleverDict``` keeps the original dictionary keys and values unchanged in ```.data``` (a feature it inherits from ```collections.UserDict```), and remembers any normalised attribute names as aliases in ```._alias```.  You can view a nice summary of all attributes and alias just by using ```print()``` or by accessing an object's ```.__str__``` method:
         
-        You can toggle this behaviour Off and On (for all future operations on all current and future objects of the class) as follows:
+            >>> x=CleverDict({True: "the truth"})
+            >>> x.data
+            {True: 'the truth'}
+            >>> print(x)
+            CleverDict
+                x[7] == x['_7'] == x._7 == 'Seven'
         
+        You can toggle normalisation Off and On (for all future operations on all current and future objects of the class) as follows:
         
             >>> CleverDict.normalise = False  # or: True
             >>> x = CleverDict({1: "One"})
@@ -91,13 +115,20 @@ Description: # CleverDict
             >>> x[1]
             'One'
         
-        ### 4. IMPORTING DATA FROM OTHER OBJECTS
-        You can import an existing object's data (but not its methods) directly using ```vars()```:
+        **NB** Most unicode letters are valid in attribute names since [PEP3131](https://www.python.org/dev/peps/pep-3131/), but ```CleverDict``` replaces other invalid characters such as punctuation marks with "```_```" on a first come, first served basis.  This can result in an ```AttributeError``` (which you can get round by renaming the offending dictionary keys).  For example:
         
-            x = CleverDict(vars(my_existing_object))
+            >>> x = CleverDict({"one-two": "hypen", "one/two": "forward slash"})
+            AttributeError: duplicate alias already exists for 'one-two'
         
-            >>> list(x.items())
-            [('total', 6), ('usergroup', 'Knights of Ni'), ('life', 42)]
+        Normalisation can get even more confusing in certain edge cases... For example not everyone knows that when creating a dictionary, the keys ```0```, ```0.0```, and ```False``` are considered the same in Python.  Likewise ```1```, ```1.0```, and ```True```, and ```1234``` and ```1234.0```.  Also if you create a regular dictionary using more than one of these different identities, they will appear to 'overwrite' each other keeping the first Key specified but the last Value specified:
+        
+        
+            x = {1: "one", True: "the truth"}
+            >>> x
+            {1: 'the truth'}
+        
+        You'll be relieved to know ```CleverDict``` handles these cases but we thought it was worth mentioning in case you came across them first and wondered what the heck was going on (as I did initially)!  You can always work out what's going on 'under the hood' by looking at the aliases with ```print()```.
+        
         
         ### 5. ENABLING THE AUTO-SAVE FUNCTION
         You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates this:
@@ -149,23 +180,18 @@ Description: # CleverDict
             >>> Type2._save = my_save_function2
         
         
-        ### 8. CHANGING THE WAY CLEVERDICT OBJECTS ARE DISPLAYED
-        If you want to overwrite the ```__str__``` method with your own function, or delete it so ```print()``` and ```str()``` default to ```__repr__``` that's easy enough too:
+        ### 8. SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM
+        We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```.alias```.
         
-            >>> print(x)
-            .total = 6 <class 'int'>
-            .usergroup = Knights of Ni <class 'str'>
+        Here's one way you could create a .store attribute and customise the auto-save behaviour:
         
-            >>> def my__str__replacement(self):
-            ...     return str(type(self))
+            class SaveDict(CleverDict):
+                def __init__(self, *args, **kwargs):
+                    self.setattr_direct('store', [])
+                    super().__init__(*args, **kwargs)
         
-            >>> setattr(CleverDict, "__str__", my__str__replacement)
-            >>> print(x)
-            <class 'cleverdict.cleverdict.CleverDict'>
-        
-            >>> delattr(CleverDict, "__str__")
-            >>> print(x)
-            CleverDict({'total':6, 'usergroup':'Knights of Ni'})
+                def save(self, name, value):
+                    self.store.append((name, value))
         
         ## CONTRIBUTING
         
