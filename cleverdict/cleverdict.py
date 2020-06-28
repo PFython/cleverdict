@@ -3,15 +3,22 @@ import collections
 import string
 import keyword
 
+class _TestClass():
+    """
+    A test class used internally to check if unicode characters
+    are valid as attribute names.
+    """
+    def __init__(self,c):
+        setattr(self,"_"+c,c)
 
 def normalise(name):
     """
-    normalises a name
+    This function converts a dictionary key into a valid Python attribute name.
 
     Parameters
     ----------
     name : any
-        name to be normalised
+        name (dictionary key) to be normalised
 
     Returns
     -------
@@ -19,36 +26,50 @@ def normalise(name):
 
     Notes
     -----
-    Normalising is used to make an item name ready to be used as an attribute
-    First, the name is converted to a string
-    Then, any characters that are not a letter, digit or underscore are substituted by a _
-    Finally if the name is the null string, starts with a digit or is a keyword, an underscore is prepended.
-    All floats without a decimal part, are converted to an underscore plus their 'integer' string, like
-    1234.0 is converted to '_1234'.
+    First, the name is converted to a string.
+    Then, any punctuation or whitespace characters are replaced by "_".
+    If the name is the null string, starts with a digit or is a keyword,
+    an underscore is prepended.
+    All floats without a decimal part, are converted to an underscore plus
+    their 'integer' string, e.g. 1234.0 is converted to '_1234'.
+    The characters of the resulting string are then tested individually and if
+    invalid (when prepended with "_") are replaced by "_".
+    This final test is to allow for unicode characters in the name, pursuant to
+    [PEP3131](https://www.python.org/dev/peps/pep-3131/)
 
     Examples
     --------
     normalise('a') --> 'a'
-    normalise('thisisalongname') --> 'thisisalogname'
+    normalise('thisisalongname') --> 'thisisalongname'
     normalise('short name') --> 'short_name'  # blank translated to _
     normalise('who are you?') --> 'who_are_you_'  # everything that's not a letter, digit or _ is translated to _
     normalise('3') --> '_3'  # name starts with a digit
     normalise(3) --> '_3'  # name starts with a digit
     normalise(0) --> '_0'  # name starts with a digit``
     normalise(False) --> '_False'  # False is a keyword
-    normalise(True) --> '_True1'  # True is a keyword
+    normalise(True) --> '_True'  # True is a keyword
+    normalise('True') --> '_True'  # 'True' is a keyword
     normalise(1234.0) --> '_1234'  # 1234.0 == hash(1234.0) and hash(1234.0) gives 1234
     normalise('else') --> '_else'  # 'else' is a keyword
-    normalise('True') --> '_True'  # 'True' is a keyword
+    normalise(None) --> '_None'  # None is a keyword
+    normalise('None') --> '_None'  # None is a keyword
     """
     if name == hash(name):
-        if not (name is True or name is False):  # is is essential
+        if not (name is True or name is False):  # this is essential
             name = hash(name)
     name = str(name)
-    name = "".join(c if c in string.ascii_letters + string.digits + "_" else "_" for c in name)
+    name = "".join("_" if c in string.punctuation + string.whitespace else c for c in name)
     if not name or name[0] in string.digits or keyword.iskeyword(name):
         name = "_" + name
-    return name
+    final_name = ""
+    for c in name:
+        x = _TestClass(c)
+        try:
+            final_name += eval("x._"+c)
+        except SyntaxError:
+            final_name += "_"
+    del x
+    return final_name
 
 class CleverDict(collections.UserDict):
     """
@@ -102,10 +123,10 @@ class CleverDict(collections.UserDict):
         norm_name = normalise(name)
         if norm_name != name:
             if norm_name in self.data:
-                raise AttributeError(f"already defined by {repr(norm_name)}")
+                raise AttributeError(f"duplicate alias already exists for {repr(norm_name)}")
             if norm_name in self._alias:
                 if self._alias[norm_name] != name:
-                    raise AttributeError(f"already defined by {repr(self._alias[norm_name])}")
+                    raise AttributeError(f"duplicate alias already exists for {repr(self._alias[norm_name])}")
             self._alias[norm_name] = name
         super().__setitem__(name, value)
         self.save(name, value)
@@ -113,10 +134,20 @@ class CleverDict(collections.UserDict):
     __setitem__ = __setattr__
 
     def setattr_direct(self, name, value):
-        '''
-        sets an attribute directly, i.e. without making it into an item
-        this can be useful to store save data (see the test script)
-        used internally to create the _alias dict
+        """
+        Sets an attribute directly, i.e. without making it into an item.
+        This can be useful to store save data.  See example in:
+        test_cleverdict.Test_Save_Functionality.test_save_misc()
+
+        class SaveDict(CleverDict):
+            def __init__(self, *args, **kwargs):
+                self.setattr_direct('store', [])
+                super().__init__(*args, **kwargs)
+
+            def save(self, name, value):
+                self.store.append((name, value))
+
+        Used internally to create the _alias dict.
 
         Parameters
         ----------
@@ -132,9 +163,9 @@ class CleverDict(collections.UserDict):
 
         Notes
         -----
-        Attributes set via setattr_direct will -by nature- not be appear in the result of repr().
-        But, they will be included in the result of str().
-        '''
+        Attributes set via setattr_direct (including aliases, notably) will
+        expressly not be appear in the result of repr().  They will appear in the result of str() however.
+        """
 
         super().__setattr__(name, value)
 
@@ -159,8 +190,11 @@ class CleverDict(collections.UserDict):
     def __repr__(self):
         parts = []
         for k, v in self.data.items():
+            if type(v) == str:
+                    v = "'" + v + "'"
             any_alias = False
             for ak, av in self._alias.items():
+
                 if k == av:
                     parts.append(f"({repr(av)}, {v})")
                     any_alias = True
@@ -192,30 +226,3 @@ class CleverDict(collections.UserDict):
         if isinstance(other, CleverDict):
             return vars(self) == vars(other)
         return NotImplemented
-
-if __name__ == "__main__":
-    x =CleverDict()
-    x[True] = 1
-    x[1] = 2
-    x[False]  = 3
-    x[0] = 4
-    print(vars(x))
-    print(x)
-
-    x =CleverDict()
-    x[1] = 1
-    x[True] = 2
-    x[0] = 3
-    x[False] = 4
-    x[1] = 1
-    x[True] = 2
-    x[0] = 3
-    x[False] = 4
-    x['a'] = 2
-    x[2] = 3
-    x[2.] =4
-    print(vars(x))
-    print(x)
-    print(repr(x))
-    y = eval(repr(x))
-    print(x==y)

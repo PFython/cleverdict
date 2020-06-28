@@ -1,4 +1,4 @@
-from cleverdict import CleverDict
+from cleverdict import CleverDict, normalise
 import pytest
 import os
 from collections import UserDict
@@ -64,16 +64,23 @@ class Test_Core_Functionality:
         assert x.what_ == "val"
 
     def test_raises_error(self):
+        """
+        Attribute and Key errors should be raised as with normal objects/dicts
+        """
         x = CleverDict()
         with pytest.raises(AttributeError):
             a = x.a
         with pytest.raises(KeyError):
             a = x["a"]
 
-    def test_normalizing(self):
+    def test_normalise(self):
         """
-        x.1 is an invalid attribute name in Python, so CleverDict
-        will convert this to x._1
+        normalise() makes an item name ready to be used as an attribute.
+        First, the name is converted to a string.
+        Then, any characters that are not a letter, digit or underscore are
+        substituted by an underscore ("_").
+        Finally if the name is the null string, starts with a digit or is a keyword, an underscore is prepended.
+        All floats without a decimal part, are converted to an underscore plus their 'integer' string, e.g. 1234.0 is converted to '_1234'.
         """
         x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
         assert x._1 == "First Entry"
@@ -94,6 +101,38 @@ class Test_Core_Functionality:
             x["4"] = "def"
         x[12345.0] = "klm"
         assert x._12345 == "klm"
+        x[2.] = "two-point-0"
+        assert x._2 == "two-point-0"
+
+    def test_data_attribute(self):
+        """
+        UserDict uses .data as a reserved attribute, so CleverDict needs
+        to protect this from being over-written.
+        """
+        x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
+        x['data'] == 123
+        assert x['_data'] == 123
+        assert x[1] == "First Entry"
+
+    def test_normalise_docstring_examples(self):
+        """
+        Runs through the examples listed in normalise.__doc__
+        """
+        tests = normalise.__doc__.split("--------\n")[-1].splitlines()[:-1]
+        for test in tests:
+            test_case, expected_result = test.split(" --> ")
+            argument = eval(test_case.split("(")[1].split(")")[0])
+            print(test_case,expected_result)
+            assert eval(test_case.strip()) == eval(expected_result.strip())
+
+    def test_normalise_unicode(self):
+        """
+        Most unicode letters are valid in attribute names since [PEP3131](https://www.python.org/dev/peps/pep-3131/).  These shouldn't be replaced with underscores.
+        """
+        x= CleverDict({"ветчина_и_яйца": "ham and eggs"})
+        assert vars(x)["_alias"] == {}
+        x= CleverDict({"ветчина&яйца": "ham and eggs"})
+        assert x.ветчина_яйца == "ham and eggs"
 
     def test_value_change(self):
         """ New attribute values should update dictionary keys & vice versa """
@@ -118,12 +157,24 @@ class Test_Core_Functionality:
         assert x["_1"] == 12
         assert x._1 == 12
 
-    def test_0_1_functionality(self):
+    def test_True_False_None_functionality(self):
+        """
+        When setting dictionary keys in Python:
+        d[0] is d[0.0] is d[False]
+        d[1] is d[1.0] is d[True]
+        d[1234.0] is d[1234]
+        If the same key is set in different ways e.g.
+            d = {0: "Zero", False: "Untrue"}
+        the last (rightmost) value overwrites any previous values, so
+            d[0] == "Untrue"
+        Furthermore, keywords like True and False can't be used as attributes.
+        """
         x = CleverDict()
-        x[0] =0
+        x[0] = 0
         x[False] = 1
         x[1] = 2
         x[True] = 3
+        x[None] = "nothing"
         assert x[0] == 1
         assert x[False] == 1
         assert x['_0'] == 1
@@ -136,27 +187,16 @@ class Test_Core_Functionality:
         assert x['_True'] == 3
         assert x._1 == 3
         assert x._True == 3
-        x = CleverDict()
-        x[False] =0
-        x[0] = 1
-        x[True] = 2
-        x[1] = 3
-        assert x[0] == 1
-        assert x[False] == 1
-        assert x['_0'] == 1
-        assert x['_False'] == 1
-        assert x._0 == 1
-        assert x._False == 1
-        assert x[1] == 3
-        assert x[True] == 3
-        assert x['_1'] == 3
-        assert x['_True'] == 3
-        assert x._1 == 3
-        assert x._True == 3
+        assert x[None] == "nothing"
+        assert x['None'] == "nothing"
+        assert x['_None'] == "nothing"
 
     def test_repr_and_eq(self):
+        """
+        Tests that the output from __repr__ can be used to reconstruct the
+        CleverDict object, and __eq__ can be used to compare CleverDict objects."""
         x = CleverDict()
-        x[0] =0
+        x[0] = 0
         x[False] = 1
         x[1] = 2
         x[True] = 3
@@ -199,6 +239,19 @@ class Test_Save_Functionality:
         assert log == "Notional save to database: .total = 7 <class 'int'>"
         self.delete_log()
 
+    def test_setattr_direct(self):
+        """
+        Sets an attribute directly, i.e. without making it into an item.
+        Attributes set via setattr_direct (including aliases, notably) will
+        expressly not be appear in the result of repr().  They will appear in the result of str() however.
+        """
+        x = CleverDict()
+        x.setattr_direct("a", "A")
+        assert x.a == "A"
+        with pytest.raises(KeyError):
+            a = x["A"]
+
+
     def test_save_misc(self):
         class SaveDict(CleverDict):
             def __init__(self, *args, **kwargs):
@@ -226,14 +279,6 @@ class Test_Save_Functionality:
         except AttributeError:
             pass
         assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
-
-
-    def test_setattr_direct(self):
-        x = CleverDict()
-        x.setattr_direct("a", "A")
-        assert x.a == "A"
-        with pytest.raises(KeyError):
-            a = x["A"]
 
 if __name__ == "__main__":
     pytest.main(["-vv", "-s"])
