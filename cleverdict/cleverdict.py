@@ -1,15 +1,6 @@
-
-import collections
-import string
 import keyword
+import itertools
 
-class _TestClass():
-    """
-    A test class used internally to check if unicode characters
-    are valid as attribute names.
-    """
-    def __init__(self,c):
-        setattr(self,"_"+c,c)
 
 def normalise(name):
     """
@@ -27,15 +18,13 @@ def normalise(name):
     Notes
     -----
     First, the name is converted to a string.
-    Then, any punctuation or whitespace characters are replaced by "_".
-    If the name is the null string, starts with a digit or is a keyword,
-    an underscore is prepended.
     All floats without a decimal part, are converted to an underscore plus
     their 'integer' string, e.g. 1234.0 is converted to '_1234'.
+    If the string is a keyword, the null string or starts with a digit it is prepended by a "_".
     The characters of the resulting string are then tested individually and if
-    invalid (when prepended with "_") are replaced by "_".
-    This final test is to allow for unicode characters in the name, pursuant to
-    [PEP3131](https://www.python.org/dev/peps/pep-3131/)
+    it is invalid in an identifier it will be replaced by a "_".
+    Note that this test is different for the first character, than the rest.
+
 
     Examples
     --------
@@ -53,25 +42,20 @@ def normalise(name):
     normalise('else') --> '_else'  # 'else' is a keyword
     normalise(None) --> '_None'  # None is a keyword
     normalise('None') --> '_None'  # None is a keyword
+    normalise('abcве') --> 'abcве'  # unicode is accepted
+    normalise('веabc') --> 'веabc'  # unicode is accepted
     """
     if name == hash(name):
-        if not (name is True or name is False):  # this is essential
+        if not (name is True or name is False):  # 'is' is essential
             name = hash(name)
     name = str(name)
-    name = "".join("_" if c in string.punctuation + string.whitespace else c for c in name)
-    if not name or name[0] in string.digits or keyword.iskeyword(name):
+    if not name or name[0].isdigit() or keyword.iskeyword(name):
         name = "_" + name
-    final_name = ""
-    for c in name:
-        x = _TestClass(c)
-        try:
-            final_name += eval("x._"+c)
-        except SyntaxError:
-            final_name += "_"
-    del x
-    return final_name
 
-class CleverDict(collections.UserDict):
+    return "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(name))
+
+
+class CleverDict(dict):
     """
     A data structure which allows both object attributes and dictionary
     keys and values to be used simultaneously and interchangeably.
@@ -92,20 +76,32 @@ class CleverDict(collections.UserDict):
     Created by Peter Fison, Ruud van der Ham, Loic Domaigne, and Rik Huygen
     from pythonistacafe.com, hoping to improve on a similar feature in Pandas.
     """
-    def __init__(self, *args, **kwargs):
-        self.setattr_direct('_alias', {})
-        super().__init__(*args, **kwargs)
+
+    def __init__(self, mapping=(), **kwargs):
+        self.setattr_direct("_alias", {})
+        self.update(mapping, **kwargs)
+
+    def update(self, mapping=(), **kwargs):
+        if hasattr(mapping, "items"):
+            mapping = getattr(mapping, "items")()
+        for k, v in itertools.chain(mapping, getattr(kwargs, "items")()):
+            self.__setitem__(k, v)
+
+    @classmethod
+    def fromkeys(cls, keys, value):
+        x = CleverDict()
+        for k in keys:
+            x[k] = value
+        return x
 
     def save(self, name, value):
         pass
 
     def __setattr__(self, name, value):
-        if name == "data":
-            return super().__setattr__(name, value)
-        if name in self.data:
+        if name in self:
             if name in (0, 1):
                 for alias_name in self._alias:
-                    if alias_name is str(name):  # is is essential
+                    if alias_name is str(name):  # 'is' is essential
                         alias_set = False
                         break
                 else:
@@ -122,7 +118,7 @@ class CleverDict(collections.UserDict):
             return
         norm_name = normalise(name)
         if norm_name != name:
-            if norm_name in self.data:
+            if norm_name in self:
                 raise AttributeError(f"duplicate alias already exists for {repr(norm_name)}")
             if norm_name in self._alias:
                 if self._alias[norm_name] != name:
@@ -187,11 +183,24 @@ class CleverDict(collections.UserDict):
     def __getitem__(self, name):
         return self._getattr_item(name, KeyError)
 
+    def __delitem__(self, k):
+
+        orgk = k
+        if k in self._alias:
+            k = self._alias[k]
+        if k in self:
+            super().__delitem__(k)
+        else:
+            raise KeyError(orgk)
+        for ak, av in list(self._alias.items()):
+            if av == k:
+                del self._alias[ak]
+
     def __repr__(self):
         parts = []
-        for k, v in self.data.items():
+        for k, v in self.items():
             if type(v) == str:
-                    v = "'" + v + "'"
+                v = "'" + v + "'"
             any_alias = False
             for ak, av in self._alias.items():
 
@@ -200,12 +209,12 @@ class CleverDict(collections.UserDict):
                     any_alias = True
             if not any_alias:
                 parts.append(f"({repr(k)}, {v})")
-        return (f"{self.__class__.__name__}([{', '.join(parts)}])")
+        return f"{self.__class__.__name__}([{', '.join(parts)}])"
 
     def __str__(self):
         result = [__class__.__name__]
         id = "x"
-        for k, v in self.data.items():
+        for k, v in self.items():
             parts = [f"    {id}[{repr(k)}] == "]
             for ak, av in self._alias.items():
                 if k == av:
@@ -218,11 +227,39 @@ class CleverDict(collections.UserDict):
             parts.append(f"{repr(v)}")
             result.append("".join(parts))
         for k, v in vars(self).items():
-            if k not in ('data', '_alias'):
+            if k not in ("_alias"):
                 result.append(f"    {id}.{k} == {repr(v)}")
         return "\n".join(result)
 
     def __eq__(self, other):
         if isinstance(other, CleverDict):
-            return vars(self) == vars(other)
+            return self.items() == other.items() and vars(self) == vars(other)
         return NotImplemented
+
+
+if __name__ == "__main__":
+    x = CleverDict()
+    x["abcà"] = 5
+    x["1a"] = 6
+    x["11a23bccà~£#@q123b/=€впВМвапрй"] = "6"
+    x["$a"] = 7
+    print(x)
+    print(repr(x))
+    x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
+
+    print(x)
+    x = CleverDict.fromkeys((1, 2, True, "a", "$test"), "YES")
+    print(x)
+    print(repr(x))
+    del x[True]
+    del x["_2"]
+    #    del x[3]
+    x["ветчина_и_яйца$a"] = "ham and eggs"
+    print(x)
+
+    tests = normalise.__doc__.split("--------\n")[-1].splitlines()[:-1]
+    for test in tests:
+        test_case, expected_result = test.split(" --> ")
+        argument = eval(test_case.split("(")[1].split(")")[0])
+        print(test_case, expected_result)
+        print(eval(test_case.strip()), eval(expected_result.strip()))

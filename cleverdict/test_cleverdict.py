@@ -1,4 +1,4 @@
-from cleverdict import CleverDict, normalise
+from cleverdict2 import CleverDict, normalise
 import pytest
 import os
 from collections import UserDict
@@ -69,9 +69,9 @@ class Test_Core_Functionality:
         """
         x = CleverDict()
         with pytest.raises(AttributeError):
-            a = x.a
+            x.a
         with pytest.raises(KeyError):
-            a = x["a"]
+            x["a"]
 
     def test_normalise(self):
         """
@@ -80,7 +80,8 @@ class Test_Core_Functionality:
         Then, any characters that are not a letter, digit or underscore are
         substituted by an underscore ("_").
         Finally if the name is the null string, starts with a digit or is a keyword, an underscore is prepended.
-        All floats without a decimal part, are converted to an underscore plus their 'integer' string, e.g. 1234.0 is converted to '_1234'.
+        All floats without a decimal part, are converted to an underscore plus their 'integer' string,
+          e.g. 1234.0 is converted to '_1234'.
         """
         x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
         assert x._1 == "First Entry"
@@ -101,38 +102,33 @@ class Test_Core_Functionality:
             x["4"] = "def"
         x[12345.0] = "klm"
         assert x._12345 == "klm"
-        x[2.] = "two-point-0"
+        x[2.0] = "two-point-0"
         assert x._2 == "two-point-0"
+        x["11a23bccà~£#@q123b/=€впВМвапрй"] = "abc"
+        assert x._11a23bccà____q123b___впВМвапрй == "abc"
+        assert x["11a23bccà~£#@q123b/=€впВМвапрй"] == "abc"
+        assert x["_11a23bccà____q123b___впВМвапрй"] == "abc"
 
     def test_data_attribute(self):
         """
         UserDict uses .data as a reserved attribute, so CleverDict needs
         to protect this from being over-written.
         """
-        x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
-        x['data'] == 123
-        assert x['_data'] == 123
-        assert x[1] == "First Entry"
-
-    def test_normalise_docstring_examples(self):
-        """
-        Runs through the examples listed in normalise.__doc__
-        """
-        tests = normalise.__doc__.split("--------\n")[-1].splitlines()[:-1]
-        for test in tests:
-            test_case, expected_result = test.split(" --> ")
-            argument = eval(test_case.split("(")[1].split(")")[0])
-            print(test_case,expected_result)
-            assert eval(test_case.strip()) == eval(expected_result.strip())
+        x = CleverDict()
+        x["data"] = "data"
+        assert x["data"] == "data"
+        assert x.data == "data"
 
     def test_normalise_unicode(self):
         """
-        Most unicode letters are valid in attribute names since [PEP3131](https://www.python.org/dev/peps/pep-3131/).  These shouldn't be replaced with underscores.
+        Most unicode letters are valid in attribute names
         """
-        x= CleverDict({"ветчина_и_яйца": "ham and eggs"})
-        assert vars(x)["_alias"] == {}
-        x= CleverDict({"ветчина&яйца": "ham and eggs"})
-        assert x.ветчина_яйца == "ham and eggs"
+        x = CleverDict({"ветчина_и_яйца$a": "ham and eggs"})
+        x.ве = "be"
+        x["1ве"] = "1be"
+        assert x.ветчина_и_яйца_a == "ham and eggs"
+        assert x.ве == "be"
+        assert x._1ве == "1be"
 
     def test_value_change(self):
         """ New attribute values should update dictionary keys & vice versa """
@@ -177,19 +173,19 @@ class Test_Core_Functionality:
         x[None] = "nothing"
         assert x[0] == 1
         assert x[False] == 1
-        assert x['_0'] == 1
-        assert x['_False'] == 1
+        assert x["_0"] == 1
+        assert x["_False"] == 1
         assert x._0 == 1
         assert x._False == 1
         assert x[1] == 3
         assert x[True] == 3
-        assert x['_1'] == 3
-        assert x['_True'] == 3
+        assert x["_1"] == 3
+        assert x["_True"] == 3
         assert x._1 == 3
         assert x._True == 3
         assert x[None] == "nothing"
-        assert x['None'] == "nothing"
-        assert x['_None'] == "nothing"
+        assert x["None"] == "nothing"
+        assert x["_None"] == "nothing"
 
     def test_repr_and_eq(self):
         """
@@ -201,11 +197,11 @@ class Test_Core_Functionality:
         x[1] = 2
         x[True] = 3
         x.a = 4
-        x['what?'] = 5
+        x["what?"] = 5
         y = eval(repr(x))
         assert x == y
         y.b = 6
-        assert x!= y
+        assert x != y
 
 
 class Test_Save_Functionality:
@@ -219,7 +215,7 @@ class Test_Save_Functionality:
         """ Once set, CleverDict.save should be called on creation """
         CleverDict.save = my_example_save_function
         self.delete_log()
-        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
+        CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         with open("example.log", "r") as file:
             log = file.read()
         assert (
@@ -249,13 +245,12 @@ class Test_Save_Functionality:
         x.setattr_direct("a", "A")
         assert x.a == "A"
         with pytest.raises(KeyError):
-            a = x["A"]
-
+            x["A"]
 
     def test_save_misc(self):
         class SaveDict(CleverDict):
             def __init__(self, *args, **kwargs):
-                self.setattr_direct('store', [])
+                self.setattr_direct("store", [])
                 super().__init__(*args, **kwargs)
 
             def save(self, name, value):
@@ -280,6 +275,6 @@ class Test_Save_Functionality:
             pass
         assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
 
+
 if __name__ == "__main__":
     pytest.main(["-vv", "-s"])
-
