@@ -1,21 +1,25 @@
-from cleverdict2 import CleverDict, normalise
+from cleverdict import CleverDict, expand, name_to_aliases, __version__
 import pytest
 import os
 from collections import UserDict
+from textwrap import dedent
 
 
-def my_example_save_function(self, name: str = "", value: any = ""):
+def my_example_save_function(self, name, value):
     """
     Example of a custom function which can be called by self._save()
     whenever the value of a CleverDict instance is created or changed.
-    Required arguments are: self, name: str and value: any
+    Required arguments are: self, name: any and value: any
     Specify this (or any other) function as the default 'save' function as follows:
     CleverDict.save = my_example_save_function
     """
     output = f"Notional save to database: .{name} = {value} {type(value)}"
-    print(output)
     with open("example.log", "a") as file:
         file.write(output)
+
+
+def dummy_save_function(self, *atgs, **kwargs):
+    pass
 
 
 class Test_Core_Functionality:
@@ -73,32 +77,23 @@ class Test_Core_Functionality:
         with pytest.raises(KeyError):
             x["a"]
 
-    def test_normalise(self):
-        """
-        normalise() makes an item name ready to be used as an attribute.
-        First, the name is converted to a string.
-        Then, any characters that are not a letter, digit or underscore are
-        substituted by an underscore ("_").
-        Finally if the name is the null string, starts with a digit or is a keyword, an underscore is prepended.
-        All floats without a decimal part, are converted to an underscore plus their 'integer' string,
-          e.g. 1234.0 is converted to '_1234'.
-        """
+    def test_expand(self):
         x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
         assert x._1 == "First Entry"
-        assert x["-1"] == "First Entry"
+        assert x["_1"] == "First Entry"
         assert x[1] == "First Entry"
-        with pytest.raises(AttributeError):
+        with pytest.raises(KeyError):
             x["1"] = 5
-        with pytest.raises(AttributeError):
+        with pytest.raises(KeyError):
             x = CleverDict({1: "First Entry", "1": "space", "??": "question"})
         x["else"] = "is else"
         assert x["else"] == "is else"
         assert x["_else"] == "is else"
         assert x._else == "is else"
-        with pytest.raises(AttributeError):
+        with pytest.raises(KeyError):
             x["?else"] = "other"
         x._4 = "abc"
-        with pytest.raises(AttributeError):
+        with pytest.raises(KeyError):
             x["4"] = "def"
         x[12345.0] = "klm"
         assert x._12345 == "klm"
@@ -110,10 +105,6 @@ class Test_Core_Functionality:
         assert x["_11a23bccà____q123b___впВМвапрй"] == "abc"
 
     def test_data_attribute(self):
-        """
-        UserDict uses .data as a reserved attribute, so CleverDict needs
-        to protect this from being over-written.
-        """
         x = CleverDict()
         x["data"] = "data"
         assert x["data"] == "data"
@@ -152,6 +143,9 @@ class Test_Core_Functionality:
         assert x["1"] == 12
         assert x["_1"] == 12
         assert x._1 == 12
+        # can't double assign
+        with pytest.raises(KeyError):
+            x["+1"] = 1
 
     def test_True_False_None_functionality(self):
         """
@@ -184,8 +178,15 @@ class Test_Core_Functionality:
         assert x._1 == 3
         assert x._True == 3
         assert x[None] == "nothing"
-        assert x["None"] == "nothing"
         assert x["_None"] == "nothing"
+        with pytest.raises(KeyError):
+            x["None"]
+            
+    def test_use_as_dict(self):
+        d = dict.fromkeys((0, 1, 23, 'what?', 'a'), 'test')
+        x = CleverDict(d)
+        x.setattr_direct('b', 2)
+        assert dict(x) == d
 
     def test_repr_and_eq(self):
         """
@@ -198,10 +199,216 @@ class Test_Core_Functionality:
         x[True] = 3
         x.a = 4
         x["what?"] = 5
+        x.add_alias('a', 'c')
         y = eval(repr(x))
         assert x == y
         y.b = 6
         assert x != y
+        x=CleverDict()
+        assert eval(repr(x)) == x
+        with expand(False):
+            x=CleverDict({True:1})
+            assert len(x.get_aliases()) == 1
+            assert CleverDict(eval(repr(x))) == x
+            # check whether _expand has been properly reset
+            x=CleverDict({True:1})
+            assert len(x.get_aliases()) == 1
+        # empty dict with one variable
+        x=CleverDict()
+        x.setattr_direct('a', 1)
+        assert len(x.get_aliases()) == 0
+        assert eval(repr(x)) == x             
+        
+    def test_update(self):
+        x = CleverDict.fromkeys((0, 1, 2, 'a', 'what?', 'return'), 0)
+        y=CleverDict({0: 2, 'c': 3,})
+        x.update(y)
+        assert x == CleverDict({0:2, 1:0, 2:0, 'a':0, 'what?':0, 'return':0, 'c':3})
+            
+
+    def test_str(self):
+        with expand(False):
+            x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
+            x.setattr_direct("b", "B")
+            assert str(x) == dedent(
+                """\
+CleverDict
+    x[0] == x['_0'] == x['_False'] == x._0 == x._False == 0
+    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 0
+    x[2] == x['_2'] == x._2 == 0
+    x['a'] == x.a == 0
+    x['what?'] == x['what_'] == x.what_ == 0
+    x['return'] == x['_return'] == x._return == 0
+    x.b == 'B'"""
+            )
+            # test whether CleverDict.expand has been maintained properly
+            assert not CleverDict.expand
+
+    def test_del(self):
+        x = CleverDict()
+        x[1] = 1
+        del x[1]
+        with pytest.raises(KeyError):
+            x[1]
+        x[1] = 1
+        del x["_1"]
+        with pytest.raises(KeyError):
+            x[1]
+        x[1] = 1
+        del x._1
+        with pytest.raises(KeyError):
+            x[1]
+        with pytest.raises(KeyError):
+            del x[1]
+        with pytest.raises(AttributeError):
+            del x._1
+
+    def test_add_alias_delete_alias(self):
+        """
+        Aliases are created automatically after expanding 1, True
+        for example.  add_alias() and delete_alias() allow us to specify
+        additional attribute names as aliases, such that if the value of one
+        changes, the value changes for all.
+        It is not possible to delete a key.
+        """
+        x = CleverDict({"red": "a lovely colour", "blue": "a cool colour"})
+        alias_list = ["crimson", "burgundy", "scarlet", "normalise~me"]
+
+        x.add_alias("red", alias_list[0])
+        x.add_alias("red", alias_list)
+        # setting an alias that is already defined for another key is not allowed
+        with pytest.raises(KeyError):
+            x.add_alias("blue", alias_list[0])
+        # setting via an alias is also valid
+        x.add_alias("scarlet", "rood")
+        assert x.rood == "a lovely colour"
+
+        for alias in alias_list[:-1]:
+            assert getattr(x, alias) == "a lovely colour"
+            assert x[alias] == "a lovely colour"
+        assert getattr(x, "normalise_me") == "a lovely colour"
+        assert x["normalise_me"] == "a lovely colour"
+
+        # Updating one alias (or primary Key) should update all:
+        x.burgundy = "A RICH COLOUR"
+        assert x.scarlet == "A RICH COLOUR"
+
+        x.delete_alias(["scarlet"])
+        with pytest.raises(AttributeError):
+            x.scarlet
+        assert x.crimson == "A RICH COLOUR"
+
+        x.crimson = "the best colour of all"
+        assert x.burgundy == "the best colour of all"
+
+        with pytest.raises(KeyError):
+            x.delete_alias(["scarlet"])
+        # can't delete the  key element
+        with pytest.raises(KeyError):
+            x.delete_alias("red")
+
+        # test 'expansion' of alias
+        x.add_alias("red", True)
+        assert x._True is x[True] is x._1 is x[1] is x["red"]
+
+        x = CleverDict()
+        x["2"] = 1
+        x.add_alias("2", True)
+        assert x.get_aliases("2") == ["2", "_2", True, "_1", "_True"]
+        # removes True, '_1' and '_True'
+        x.delete_alias(True)
+        assert x.get_aliases("2") == ["2", "_2"]
+
+        x = CleverDict()
+        x["2"] = 1
+        x.add_alias("2", True)
+        assert x.get_aliases("2") == ["2", "_2", True, "_1", "_True"]
+        # only remove True,not '_1' and '_True'
+        with expand(False):
+            x.delete_alias(True)
+        assert x.get_aliases("2") == ["2", "_2", "_1", "_True"]
+
+    def test_get_key(self):
+        x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
+        x.add_alias(0, "zero")
+        for key in x.keys():
+            for name in x.get_aliases(key):
+                assert x.get_key(name) == key
+        assert x.get_key(True) == 1
+        assert x.get_key("_True") == 1
+        assert x.get_key("zero") == 0
+
+    def test_expand(self):
+        with expand(False):
+            x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
+            x.add_alias(0, 2)
+        assert x.get_aliases("a") == ["a"]
+        assert x.get_aliases(0) == [0, 2]
+        assert x.get_aliases(1) == [1]
+
+        x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
+        x.add_alias(0, 2)
+        assert x.get_aliases("a") == ["a"]
+        assert x.get_aliases(0) == [0, "_0", "_False", 2, "_2"]
+        assert x.get_aliases(1) == [1, "_1", "_True"]
+
+        with expand(True):
+            x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
+            x.add_alias(0, 2)
+        assert x.get_aliases("a") == ["a"]
+        assert x.get_aliases(0) == [0, "_0", "_False", 2, "_2"]
+        assert x.get_aliases(1) == [1, "_1", "_True"]
+
+        CleverDict.expand = False
+        x = CleverDict({1:1})
+        with pytest.raises(AttributeError):
+            x._1
+        CleverDict.expand = True
+        x = CleverDict({1:1})
+        x._1        
+        
+    def test_expand_context_manager(self):
+        with expand(False):
+            assert not CleverDict.expand            
+        assert CleverDict.expand      
+        with expand(True):
+            assert CleverDict.expand            
+        assert CleverDict.expand
+        
+        CleverDict.expand = False
+        with expand(False):
+            assert not CleverDict.expand
+            
+        assert not CleverDict.expand      
+        with expand(True):
+            assert CleverDict.expand            
+        assert not CleverDict.expand
+         
+        CleverDict.expand = True
+        
+    def test_name_to_aliases(self):
+        assert name_to_aliases("a") == ["a"]
+        assert name_to_aliases(True) == [True, "_1", "_True"]
+        assert name_to_aliases("3test test") == ["3test test", "_3test_test"]
+        with expand(False):
+            assert name_to_aliases("a") == ["a"]
+            assert name_to_aliases(True) == [True]
+            assert name_to_aliases("3test test") == ["3test test"]
+
+    def test_setattr_direct(self):
+        """
+        Sets an attribute directly, i.e. without making it into an item.
+        Attributes set via setattr_direct will
+        expressly not appear in the result of repr().  They will appear in the result of str() however.
+        """
+        x = CleverDict()
+        x.setattr_direct("a", "A")
+        assert x.a == "A"
+        with pytest.raises(KeyError):
+            x["a"]
+            x.get_key("a")
+        assert x.get_aliases() == []
+        
 
 
 class Test_Save_Functionality:
@@ -223,6 +430,7 @@ class Test_Save_Functionality:
             == "Notional save to database: .total = 6 <class 'int'>Notional save to database: .usergroup = Knights of Ni <class 'str'>"
         )
         self.delete_log()
+        CleverDict.save = dummy_save_function
 
     def test_save_on_update(self):
         """ Once set, CleverDict.save should be called after updates """
@@ -234,18 +442,7 @@ class Test_Save_Functionality:
             log = file.read()
         assert log == "Notional save to database: .total = 7 <class 'int'>"
         self.delete_log()
-
-    def test_setattr_direct(self):
-        """
-        Sets an attribute directly, i.e. without making it into an item.
-        Attributes set via setattr_direct (including aliases, notably) will
-        expressly not be appear in the result of repr().  They will appear in the result of str() however.
-        """
-        x = CleverDict()
-        x.setattr_direct("a", "A")
-        assert x.a == "A"
-        with pytest.raises(KeyError):
-            x["A"]
+        CleverDict.save = dummy_save_function
 
     def test_save_misc(self):
         class SaveDict(CleverDict):
@@ -265,13 +462,13 @@ class Test_Save_Functionality:
         x["_3"] = 8
         try:
             x["?3"] = 9
-        except AttributeError:
+        except KeyError:
             pass
         x._4 = 9
         x["_4"] = 10
         try:
             x["4"] = 11
-        except AttributeError:
+        except KeyError:
             pass
         assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
 

@@ -1,5 +1,4 @@
 # __init__.py
-__version__ = "1.4"
 
-from .cleverdict import CleverDict, normalise
-
+from .cleverdict import *
+from .cleverdict import __version__
