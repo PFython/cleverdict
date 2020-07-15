@@ -1,4 +1,4 @@
-from cleverdict import CleverDict, expand, name_to_aliases, __version__
+from cleverdict import CleverDict, Expand, name_to_aliases, __version__
 import pytest
 import os
 from collections import UserDict
@@ -77,7 +77,7 @@ class Test_Core_Functionality:
         with pytest.raises(KeyError):
             x["a"]
 
-    def test_expand(self):
+    def test_Expand(self):
         x = CleverDict({1: "First Entry", " ": "space", "??": "question"})
         assert x._1 == "First Entry"
         assert x["_1"] == "First Entry"
@@ -181,7 +181,7 @@ class Test_Core_Functionality:
         assert x["_None"] == "nothing"
         with pytest.raises(KeyError):
             x["None"]
-            
+
     def test_use_as_dict(self):
         d = dict.fromkeys((0, 1, 23, 'what?', 'a'), 'test')
         x = CleverDict(d)
@@ -206,7 +206,7 @@ class Test_Core_Functionality:
         assert x != y
         x=CleverDict()
         assert eval(repr(x)) == x
-        with expand(False):
+        with Expand(False):
             x=CleverDict({True:1})
             assert len(x.get_aliases()) == 1
             assert CleverDict(eval(repr(x))) == x
@@ -217,17 +217,17 @@ class Test_Core_Functionality:
         x=CleverDict()
         x.setattr_direct('a', 1)
         assert len(x.get_aliases()) == 0
-        assert eval(repr(x)) == x             
-        
+        assert eval(repr(x)) == x
+
     def test_update(self):
         x = CleverDict.fromkeys((0, 1, 2, 'a', 'what?', 'return'), 0)
         y=CleverDict({0: 2, 'c': 3,})
-        x.update(y)
+        x._update(y)
         assert x == CleverDict({0:2, 1:0, 2:0, 'a':0, 'what?':0, 'return':0, 'c':3})
-            
+
 
     def test_str(self):
-        with expand(False):
+        with Expand(False):
             x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
             x.setattr_direct("b", "B")
             assert str(x) == dedent(
@@ -324,7 +324,7 @@ CleverDict
         x.add_alias("2", True)
         assert x.get_aliases("2") == ["2", "_2", True, "_1", "_True"]
         # only remove True,not '_1' and '_True'
-        with expand(False):
+        with Expand(False):
             x.delete_alias(True)
         assert x.get_aliases("2") == ["2", "_2", "_1", "_True"]
 
@@ -333,13 +333,13 @@ CleverDict
         x.add_alias(0, "zero")
         for key in x.keys():
             for name in x.get_aliases(key):
-                assert x.get_key(name) == key
-        assert x.get_key(True) == 1
-        assert x.get_key("_True") == 1
-        assert x.get_key("zero") == 0
+                assert x._get_key(name) == key
+        assert x._get_key(True) == 1
+        assert x._get_key("_True") == 1
+        assert x._get_key("zero") == 0
 
-    def test_expand(self):
-        with expand(False):
+    def test_Expand(self):
+        with Expand(False):
             x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
             x.add_alias(0, 2)
         assert x.get_aliases("a") == ["a"]
@@ -352,7 +352,7 @@ CleverDict
         assert x.get_aliases(0) == [0, "_0", "_False", 2, "_2"]
         assert x.get_aliases(1) == [1, "_1", "_True"]
 
-        with expand(True):
+        with Expand(True):
             x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
             x.add_alias(0, 2)
         assert x.get_aliases("a") == ["a"]
@@ -365,32 +365,32 @@ CleverDict
             x._1
         CleverDict.expand = True
         x = CleverDict({1:1})
-        x._1        
-        
+        x._1
+
     def test_expand_context_manager(self):
-        with expand(False):
-            assert not CleverDict.expand            
-        assert CleverDict.expand      
-        with expand(True):
-            assert CleverDict.expand            
-        assert CleverDict.expand
-        
-        CleverDict.expand = False
-        with expand(False):
+        with Expand(False):
             assert not CleverDict.expand
-            
-        assert not CleverDict.expand      
-        with expand(True):
-            assert CleverDict.expand            
+        assert CleverDict.expand
+        with Expand(True):
+            assert CleverDict.expand
+        assert CleverDict.expand
+
+        CleverDict.expand = False
+        with Expand(False):
+            assert not CleverDict.expand
+
         assert not CleverDict.expand
-         
+        with Expand(True):
+            assert CleverDict.expand
+        assert not CleverDict.expand
+
         CleverDict.expand = True
-        
+
     def test_name_to_aliases(self):
         assert name_to_aliases("a") == ["a"]
         assert name_to_aliases(True) == [True, "_1", "_True"]
         assert name_to_aliases("3test test") == ["3test test", "_3test_test"]
-        with expand(False):
+        with Expand(False):
             assert name_to_aliases("a") == ["a"]
             assert name_to_aliases(True) == [True]
             assert name_to_aliases("3test test") == ["3test test"]
@@ -406,9 +406,9 @@ CleverDict
         assert x.a == "A"
         with pytest.raises(KeyError):
             x["a"]
-            x.get_key("a")
+            x._get_key("a")
         assert x.get_aliases() == []
-        
+
 
 
 class Test_Save_Functionality:

@@ -1,11 +1,19 @@
 import keyword
 import itertools
 
-__version__ = "1.5.1"
+__version__ = "1.5.2"
 
 '''
 Change log
 ==========
+
+version 1.5.2  2020-97-15
+-------------------------
+
+Wording of Docstrings, README, and tests updated.
+expand (class) now upper-case e.g. "Expand" to distinguish from .expand.
+get_key other internal methods renamed to private functions e.g. _get_key
+
 version 1.5.1  2020-07-02
 -------------------------
 First version with the change log.
@@ -25,12 +33,12 @@ The implemenation of several methods is more compact and more stable by reusing 
 More and improved tests.
 '''
 
-class expand:
+class Expand:
     def __init__(self, ok):
         """
-        provides a context manager to temporary disable expansion of keys.
+        Provides a context manager to temporary disable expansion of keys.
         upon exiting the context manager, the value of expand is restored.
-        
+
         Parameters
         ----------
         ok : bool
@@ -46,21 +54,21 @@ class expand:
     def __exit__(self, *args):
         CleverDict.expand = self.save_expand
 
-
 def name_to_aliases(name):
     """
-    return all possible aliases for name
+    Returns all possible aliases for a given name.
 
     Parameters
     ----------
     name : any
-    
+
     Return
     ------
     Aliases for name : list
-        if CleverDict.expand == False (preferable set via the expand context manager, 
-        the list will contain only name
-        otherwise (default), the list will start with the name, followed by all possible aliases for name      
+
+    By default the list will start with name, followed by all possible aliases for name.  However if CleverDict.expand == False, the list will only contain name.
+
+    CleverDict.expand should preferably be set via the context manager Expand.
     """
     result = [name]
     if CleverDict.expand:
@@ -102,31 +110,37 @@ class CleverDict(dict):
     Import data from an existing object to a CleverDict:
         x = CleverDict(vars(my_existing_object))
 
-    Created by Peter Fison, Ruud van der Ham, Loic Domaigne, and Rik Huygen
+    Created by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen
     from pythonistacafe.com, hoping to improve on a similar feature in Pandas.
     """
-    expand = True
+    expand = True  # Used by .delete_alias
 
     def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
         self.setattr_direct("_aliases", {})
-        with expand(CleverDict.expand if _aliases is None else False):
-            self.update(_mapping, **kwargs)
+        with Expand(CleverDict.expand if _aliases is None else False):
+            self._update(_mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
             for k, v in _vars.items():
-                self.setattr_direct(k, v)            
+                self.setattr_direct(k, v)
 
-    def update(self, _mapping=(), **kwargs):
+    def _update(self, _mapping=(), **kwargs):
         if hasattr(_mapping, "items"):
             _mapping = getattr(_mapping, "items")()
-        
+
         for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
             self.__setitem__(k, v)
-                
+
 
     @classmethod
     def fromkeys(cls, keys, value):
+        """
+        Instantiates an object using supplied keys/aliases and values e.g.
+
+        >>> x = CleverDict().fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
+
+        """
         return CleverDict({k: value for k in keys})
 
     def save(self, name, value):
@@ -139,7 +153,7 @@ class CleverDict(dict):
             for al in name_to_aliases(name):
                 self._add_alias(name, al)
         super().__setitem__(name, value)
-        self.save(name, value)        
+        self.save(name, value)
 
     __setitem__ = __setattr__
 
@@ -166,7 +180,7 @@ class CleverDict(dict):
         super().__setattr__(name, value)
 
     def __getitem__(self, name):
-        name = self.get_key(name)
+        name = self._get_key(name)
         return super().__getitem__(name)
 
     def __getattr__(self, name):
@@ -176,7 +190,7 @@ class CleverDict(dict):
             raise AttributeError(e)
 
     def __delitem__(self, key):
-        key = self.get_key(key)
+        key = self._get_key(key)
         super().__delitem__(key)
         for ak, av in list(self._aliases.items()):
             if av == key:
@@ -188,19 +202,19 @@ class CleverDict(dict):
         except KeyError as e:
             raise AttributeError(e)
 
-    def get_key(self, name):
+    def _get_key(self, name):
         """
-        gets key where name is belonging to
-        
+        Returns the primary key for a given name.
+
         Parameters
         ----------
         name : any
             name to be searched
-            
+
         Returns
         -------
         key where name belongs to : any
-        
+
         Notes
         -----
         If name can't be found, a KeyError is raised
@@ -213,14 +227,14 @@ class CleverDict(dict):
 
     def get_aliases(self, name=_default):
         """
-        get all alliases or aliases for a given name
-        
+        Returns all alliases or aliases for a given name.
+
         Parameters
         ----------
         name : any
             name to be given aliases for
             if omitted, all aliases will be returned
-        
+
         Returns
         -------
         aliases : list
@@ -228,32 +242,32 @@ class CleverDict(dict):
         """
         if name is CleverDict._default:
             return list(self._aliases.keys())
-        else:            
-            return [ak for ak, av in self._aliases.items() if av == self.get_key(name)]
+        else:
+            return [ak for ak, av in self._aliases.items() if av == self._get_key(name)]
 
     def add_alias(self, name, alias):
         """
-        adds an alias to a given key
-        
+        Adds an alias to a given key/name.
+
         Parameters
         ----------
         name : any
             must be an existing key or an alias
-            
+
         alias : scalar or list of scalar
             alias(es) to be added to the key
-            
+
         Returns
         -------
         None
-        
+
         Notes
         -----
-        If alias is already refering to a key belonging to name, this is dummy
-        If alias is already refering to key not belonging to name, a KeyError will be raised        
+        No change if alias already refers to a key in 'name'.
+        If alias already refers to a key not in 'name', a KeyError will be raised.
         """
 
-        key = self.get_key(name)
+        key = self._get_key(name)
         if not hasattr(alias, "__iter__") or isinstance(alias, str):
             alias = [alias]
         for al in alias:
@@ -262,7 +276,10 @@ class CleverDict(dict):
 
     def _add_alias(self, name, alias):
         """
-        internal method
+        Internal method for error handling while adding and alias, and finally
+        adding to .alias.
+
+        Used by add_alia, __init__ and __setattr__.
         """
         if alias in self._aliases and self._aliases[alias] != name:
             raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
@@ -270,24 +287,25 @@ class CleverDict(dict):
 
     def delete_alias(self, alias):
         """
-        deletes an alias 
-        
+        deletes an alias
+
         Parameters
         ----------
         alias : scalar or list of scalars
             alias(es) to be deleted
-            
+
         Returns
         -------
         None
-        
+
         Notes
         -----
-        if CleverDict.expand is True (the 'normal' case), all aliases (apart from the key that refer to alias
-            are deleted as well (if they exist))
-        if CleverDict.expand is False (most likely set the expand context manager), only alias will be deleted
-        
-        Keys cannot be deleted
+        If .exapand == True (the 'normal' case), .delete_alias will remove all
+        the specified alias AND all other aliases (apart from the original key).
+        If .exapand == False (most likely set via the Expand context manager),
+        .delete_alias will only remove the alias specified.
+
+        Keys cannot be deleted.
         """
         if not hasattr(alias, "__iter__") or isinstance(alias, str):
             alias = [alias]
@@ -295,7 +313,7 @@ class CleverDict(dict):
             if al not in self._aliases:
                 raise KeyError(f"{repr(al)} not present")
             if al in self:
-                raise KeyError(f"key element {repr(al)} can't be deleted")
+                raise KeyError(f"primary key {repr(al)} can't be deleted")
             del self._aliases[al]
             for alx in name_to_aliases(al):
                 if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
@@ -314,7 +332,7 @@ class CleverDict(dict):
         for k, v in self.items():
             parts = ["    "]
 
-            with expand(True):
+            with Expand(True):
                 for ak in name_to_aliases(k):
                     parts.append(f"{id}[{repr(ak)}] == ")
                 for ak in name_to_aliases(k):
@@ -335,4 +353,4 @@ class CleverDict(dict):
 
 if __name__ == "__main__":
     pass
-    
+

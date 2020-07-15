@@ -55,7 +55,7 @@ You can also supply keyword arguments like this:
     >>> x['review']
     'tomorrow'
 
-Or using ```.fromkeys()``` like this:
+Or using the ```.fromkeys()``` method like this:
 
     >>> x = CleverDict().fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
 
