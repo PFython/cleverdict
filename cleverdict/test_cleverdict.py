@@ -1,24 +1,25 @@
-from cleverdict import CleverDict, Expand, name_to_aliases, __version__
+from cleverdict import CleverDict, Expand, all_aliases, __version__
 import pytest
 import os
 from collections import UserDict
 from textwrap import dedent
 
 
-def my_example_save_function(self, name, value):
+def example_save_function(self, key, value):
     """
     Example of a custom function which can be called by self._save()
     whenever the value of a CleverDict instance is created or changed.
     Required arguments are: self, name: any and value: any
     Specify this (or any other) function as the default 'save' function as follows:
-    CleverDict.save = my_example_save_function
+    CleverDict.save = example_save_function
     """
-    output = f"Notional save to database: .{name} = {value} {type(value)}"
+    output = f"Notional save to database: .{key} = {value} {type(value)}"
     with open("example.log", "a") as file:
-        file.write(output)
+        file.write(output + "\n")
+    print(output)
 
 
-def dummy_save_function(self, *atgs, **kwargs):
+def dummy_save_function(self, *args, **kwargs):
     pass
 
 
@@ -411,14 +412,14 @@ class Test_Save_Functionality:
 
     def test_save_on_creation(self):
         """ Once set, CleverDict.save should be called on creation """
-        CleverDict.save = my_example_save_function
+        CleverDict.save = example_save_function
         self.delete_log()
         CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         with open("example.log", "r") as file:
             log = file.read()
         assert (
             log
-            == "Notional save to database: .total = 6 <class 'int'>Notional save to database: .usergroup = Knights of Ni <class 'str'>"
+            == "Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"
         )
         self.delete_log()
         CleverDict.save = dummy_save_function
@@ -427,11 +428,11 @@ class Test_Save_Functionality:
         """ Once set, CleverDict.save should be called after updates """
         x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         self.delete_log()
-        CleverDict.save = my_example_save_function
+        CleverDict.save = example_save_function
         x.total += 1
         with open("example.log", "r") as file:
             log = file.read()
-        assert log == "Notional save to database: .total = 7 <class 'int'>"
+        assert log == "Notional save to database: .total = 7 <class 'int'>\n"
         self.delete_log()
         CleverDict.save = dummy_save_function
 

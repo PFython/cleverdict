@@ -2,20 +2,25 @@ import inspect
 import keyword
 import itertools
 
-__version__ = "1.5.21"
+__version__ = "1.5.22"
 
 '''
 Change log
 ==========
 
+version 1.5.22  2020-97-16
+--------------------------
+README updated
+example_save_function includes line spaces and prints output
+Methods grouped and sorted by dunder, private, public.
+name_to_aliases renamed: all_aliases
+
 version 1.5.21  2020-97-16
--------------------------
+--------------------------
 __str__ now defaults to __repr__
 Added .info() method for displaying summary previously returned by __str__
 get_key() reinstated.
 Parameters added to main CleverDict class Docstring.
-Methods grouped and sorted by dunder, private, public.
-name_to_aliases renamed all_aliases
 
 version 1.5.2  2020-97-15
 -------------------------
