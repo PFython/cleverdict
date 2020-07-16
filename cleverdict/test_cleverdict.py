@@ -220,10 +220,10 @@ class Test_Core_Functionality:
         assert len(x.get_aliases()) == 0
         assert eval(repr(x)) == x
 
-    def test_update(self):
+    def testupdate(self):
         x = CleverDict.fromkeys((0, 1, 2, 'a', 'what?', 'return'), 0)
         y=CleverDict({0: 2, 'c': 3,})
-        x._update(y)
+        x.update(y)
         assert x == CleverDict({0:2, 1:0, 2:0, 'a':0, 'what?':0, 'return':0, 'c':3})
 
 
@@ -401,6 +401,10 @@ class Test_Core_Functionality:
             x.get_key("a")
         assert x.get_aliases() == []
 
+    def test_info(self):
+        """ .info should return a string if as_str == True """
+        x = CleverDict(a="A")
+        assert x.info(as_str=True) == "CleverDict: \nx\n\nx['a'] == x.a == 'A'"
 
 
 class Test_Save_Functionality:
@@ -424,7 +428,7 @@ class Test_Save_Functionality:
         self.delete_log()
         CleverDict.save = dummy_save_function
 
-    def test_save_on_update(self):
+    def test_save_onupdate(self):
         """ Once set, CleverDict.save should be called after updates """
         x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         self.delete_log()

@@ -49,7 +49,7 @@ You can import an existing object's data (but not its methods) directly using ``
 
     z['name'] == z.name == 'Percival'
 
-    >>> x.info(noprint=True)  # Returns a string e.g. for parsing
+    >>> x.info(as_str=True)  # Returns a string e.g. for further parsing
     "CleverDict: \nx == y == z\n\nz['name'] == z.name == 'Percival'"
 
 

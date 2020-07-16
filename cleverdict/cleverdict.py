@@ -2,11 +2,17 @@ import inspect
 import keyword
 import itertools
 
-__version__ = "1.5.22"
+__version__ = "1.5.23"
 
 '''
 Change log
 ==========
+
+version 1.5.23  2020-97-16
+--------------------------
+_update renamed back to update
+info(noprint=True) changed to info(as_str=True)
+test added for info
 
 version 1.5.22  2020-97-16
 --------------------------
@@ -108,7 +114,7 @@ class CleverDict(dict):
     def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
         self.setattr_direct("_aliases", {})
         with Expand(CleverDict.expand if _aliases is None else False):
-            self._update(_mapping, **kwargs)
+            self.update(_mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
@@ -171,7 +177,7 @@ class CleverDict(dict):
             raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
         self._aliases[alias] = name
 
-    def _update(self, _mapping=(), **kwargs):
+    def update(self, _mapping=(), **kwargs):
         """
         Finally updates the objects values according to a mapping or iterable."""
         if hasattr(_mapping, "items"):
@@ -320,7 +326,7 @@ class CleverDict(dict):
                 if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
-    def info(self, **kwargs):
+    def info(self, as_str = False):
         frame = inspect.currentframe().f_back.f_locals
         self_value = locals()["self"]
         # If more than one variable has the same value, use the most recent [-1]
@@ -341,7 +347,7 @@ class CleverDict(dict):
             if k not in ("_aliases"):
                 result.append(f"{id}.{k} == {repr(v)}")
         output = "\n".join(result)
-        if kwargs.get("noprint"):
+        if as_str:
             return output
         else:
             print(output)
