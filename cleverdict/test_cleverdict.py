@@ -226,21 +226,12 @@ class Test_Core_Functionality:
         assert x == CleverDict({0:2, 1:0, 2:0, 'a':0, 'what?':0, 'return':0, 'c':3})
 
 
-    def test_str(self):
+    def test_info(self):
         with Expand(False):
             x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
             x.setattr_direct("b", "B")
-            assert str(x) == dedent(
-                """\
-CleverDict
-    x[0] == x['_0'] == x['_False'] == x._0 == x._False == 0
-    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 0
-    x[2] == x['_2'] == x._2 == 0
-    x['a'] == x.a == 0
-    x['what?'] == x['what_'] == x.what_ == 0
-    x['return'] == x['_return'] == x._return == 0
-    x.b == 'B'"""
-            )
+            z = y = x
+            assert x.info(noprint=True) == "CleverDict: \nx == z == y\n\ny[0] == y['_0'] == y['_False'] == y._0 == y._False == 0\ny[1] == y['_1'] == y['_True'] == y._1 == y._True == 0\ny[2] == y['_2'] == y._2 == 0\ny['a'] == y.a == 0\ny['what?'] == y['what_'] == y.what_ == 0\ny['return'] == y['_return'] == y._return == 0\ny.b == 'B'"
             # test whether CleverDict.expand has been maintained properly
             assert not CleverDict.expand
 
@@ -328,15 +319,15 @@ CleverDict
             x.delete_alias(True)
         assert x.get_aliases("2") == ["2", "_2", "_1", "_True"]
 
-    def test_get_key(self):
+    def testget_key(self):
         x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
         x.add_alias(0, "zero")
         for key in x.keys():
             for name in x.get_aliases(key):
-                assert x._get_key(name) == key
-        assert x._get_key(True) == 1
-        assert x._get_key("_True") == 1
-        assert x._get_key("zero") == 0
+                assert x.get_key(name) == key
+        assert x.get_key(True) == 1
+        assert x.get_key("_True") == 1
+        assert x.get_key("zero") == 0
 
     def test_Expand(self):
         with Expand(False):
@@ -406,7 +397,7 @@ CleverDict
         assert x.a == "A"
         with pytest.raises(KeyError):
             x["a"]
-            x._get_key("a")
+            x.get_key("a")
         assert x.get_aliases() == []
 
 

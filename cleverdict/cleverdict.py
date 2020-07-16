@@ -1,11 +1,20 @@
+import inspect
 import keyword
 import itertools
 
-__version__ = "1.5.2"
+__version__ = "1.5.21"
 
 '''
 Change log
 ==========
+
+version 1.5.21  2020-97-16
+-------------------------
+__str__ now defaults to __repr__
+Added .info() method for displaying summary previously returned by __str__
+get_key() reinstated.
+Parameters added to main CleverDict class Docstring.
+Methods grouped and sorted by dunder, private, public.
 
 version 1.5.2  2020-97-15
 -------------------------
@@ -97,22 +106,35 @@ class CleverDict(dict):
     A data structure which allows both object attributes and dictionary
     keys and values to be used simultaneously and interchangeably.
 
-    The save() method (which you can adapt or overwrite) is called whenever
-    an attribute or dictionary value changes.  Useful for automatically writing
-    results to a database, for example:
+    Parameters
+    ----------
+    The same as dict i.e.:
 
-        from cleverdict.test_cleverdict import my_example_save_function
-        CleverDict.save = my_example_save_function
+        CleverDict() -> new empty Clever Dictionary.
+        CleverDict(mapping) -> new Clever Dictionary initialized from a mapping
+        object's (key, value) pairs.
+        CleverDict(iterable) -> new Clever Dictionary initialized as if via:
+            d = {}
+            for k, v in iterable:
+                d[k] = v
+        CleverDict(**kwargs) -> new Clever Dictionary initialized with the
+        name=value pairs in the keyword argument list.  For example:
+        CleverDict(one=1, two=2)
 
-    Convert an existing dictionary or UserDict to CleverDict:
-        x = CleverDict(my_existing_dict)
+    On top of that there are two extra positional parameters which are
+    primarily for evalation of the result of a __repr__ call:
 
-    Import data from an existing object to a CleverDict:
-        x = CleverDict(vars(my_existing_object))
+    _aliases : dict
+        a dictionary that contains items as follows:
+            key : name of a (new) alias.
+            value : value to which this key belongs. This key *must* be defined!
 
-    Created by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen
-    from pythonistacafe.com, hoping to improve on a similar feature in Pandas.
+    _vars : dict
+        a dictionary that contains items as follows:
+            key: attribute which, when set, will *not* become an item of the Clever Dictionary.
+            value : value of this attribute.
     """
+
     expand = True  # Used by .delete_alias
 
     def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
@@ -125,13 +147,70 @@ class CleverDict(dict):
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
 
+    def __setattr__(self, name, value):
+        if name in self._aliases:
+            name = self._aliases[name]
+        elif name not in self:
+            for al in name_to_aliases(name):
+                self._add_alias(name, al)
+        super().__setitem__(name, value)
+        self.save(name, value)
+
+    __setitem__ = __setattr__
+
+    def __getitem__(self, name):
+        name = self.get_key(name)
+        return super().__getitem__(name)
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as e:
+            raise AttributeError(e)
+
+    def __delitem__(self, key):
+        key = self.get_key(key)
+        super().__delitem__(key)
+        for ak, av in list(self._aliases.items()):
+            if av == key:
+                del self._aliases[ak]
+
+    def __delattr__(self, k):
+        try:
+            del self[k]
+        except KeyError as e:
+            raise AttributeError(e)
+
+    def __eq__(self, other):
+        if isinstance(other, CleverDict):
+            return self.items() == other.items() and vars(self) == vars(other)
+        return NotImplemented
+
+    def __repr__(self):
+       _mapping = dict(self.items())
+       _aliases = {k: v for k, v in self._aliases.items() if k not in self}
+       _vars = {k: v for k,v in vars(self).items() if k != '_aliases'}
+       return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+
+    def _add_alias(self, name, alias):
+        """
+        Internal method for error handling while adding and alias, and finally
+        adding to .alias.
+
+        Used by add_alias, __init__ and __setattr__.
+        """
+        if alias in self._aliases and self._aliases[alias] != name:
+            raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
+        self._aliases[alias] = name
+
     def _update(self, _mapping=(), **kwargs):
+        """
+        Finally updates the objects values according to a mapping or iterable."""
         if hasattr(_mapping, "items"):
             _mapping = getattr(_mapping, "items")()
 
         for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
             self.__setitem__(k, v)
-
 
     @classmethod
     def fromkeys(cls, keys, value):
@@ -145,17 +224,6 @@ class CleverDict(dict):
 
     def save(self, name, value):
         pass
-
-    def __setattr__(self, name, value):
-        if name in self._aliases:
-            name = self._aliases[name]
-        elif name not in self:
-            for al in name_to_aliases(name):
-                self._add_alias(name, al)
-        super().__setitem__(name, value)
-        self.save(name, value)
-
-    __setitem__ = __setattr__
 
     def setattr_direct(self, name, value):
         """
@@ -176,33 +244,9 @@ class CleverDict(dict):
         -------
         None
         """
-
         super().__setattr__(name, value)
 
-    def __getitem__(self, name):
-        name = self._get_key(name)
-        return super().__getitem__(name)
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError as e:
-            raise AttributeError(e)
-
-    def __delitem__(self, key):
-        key = self._get_key(key)
-        super().__delitem__(key)
-        for ak, av in list(self._aliases.items()):
-            if av == key:
-                del self._aliases[ak]
-
-    def __delattr__(self, k):
-        try:
-            del self[k]
-        except KeyError as e:
-            raise AttributeError(e)
-
-    def _get_key(self, name):
+    def get_key(self, name):
         """
         Returns the primary key for a given name.
 
@@ -243,7 +287,7 @@ class CleverDict(dict):
         if name is CleverDict._default:
             return list(self._aliases.keys())
         else:
-            return [ak for ak, av in self._aliases.items() if av == self._get_key(name)]
+            return [ak for ak, av in self._aliases.items() if av == self.get_key(name)]
 
     def add_alias(self, name, alias):
         """
@@ -267,23 +311,12 @@ class CleverDict(dict):
         If alias already refers to a key not in 'name', a KeyError will be raised.
         """
 
-        key = self._get_key(name)
+        key = self.get_key(name)
         if not hasattr(alias, "__iter__") or isinstance(alias, str):
             alias = [alias]
         for al in alias:
             for name in name_to_aliases(al):
                 self._add_alias(key, name)
-
-    def _add_alias(self, name, alias):
-        """
-        Internal method for error handling while adding and alias, and finally
-        adding to .alias.
-
-        Used by add_alia, __init__ and __setattr__.
-        """
-        if alias in self._aliases and self._aliases[alias] != name:
-            raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
-        self._aliases[alias] = name
 
     def delete_alias(self, alias):
         """
@@ -319,19 +352,15 @@ class CleverDict(dict):
                 if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
-
-    def __repr__(self):
-       _mapping = dict(self.items())
-       _aliases = {k: v for k, v in self._aliases.items() if k not in self}
-       _vars = {k: v for k,v in vars(self).items() if k != '_aliases'}
-       return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
-
-    def __str__(self):
-        result = [__class__.__name__]
-        id = "x"
+    def info(self, **kwargs):
+        frame = inspect.currentframe().f_back.f_locals
+        self_value = locals()["self"]
+        # If more than one variable has the same value, use the most recent [-1]
+        ids = [k for k, v in frame.items() if v == self_value]
+        result = [__class__.__name__ + ": " + "\n" + " == ".join(ids) + "\n"]
+        id = ids[-1]
         for k, v in self.items():
-            parts = ["    "]
-
+            parts = []
             with Expand(True):
                 for ak in name_to_aliases(k):
                     parts.append(f"{id}[{repr(ak)}] == ")
@@ -342,14 +371,12 @@ class CleverDict(dict):
             result.append("".join(parts))
         for k, v in vars(self).items():
             if k not in ("_aliases"):
-                result.append(f"    {id}.{k} == {repr(v)}")
-        return "\n".join(result)
-
-    def __eq__(self, other):
-        if isinstance(other, CleverDict):
-            return self.items() == other.items() and vars(self) == vars(other)
-        return NotImplemented
-
+                result.append(f"{id}.{k} == {repr(v)}")
+        output = "\n".join(result)
+        if kwargs.get("noprint"):
+            return output
+        else:
+            print(output)
 
 if __name__ == "__main__":
     pass
