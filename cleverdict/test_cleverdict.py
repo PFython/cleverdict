@@ -403,9 +403,8 @@ class Test_Core_Functionality:
 
     def test_info(self):
         """ .info should return a string if as_str == True """
-        x = CleverDict(a="A")
-        assert x.info(as_str=True) == "CleverDict: \nx\n\nx['a'] == x.a == 'A'"
-
+        x = y = z = CleverDict(a="A")
+        assert x.info(as_str=True) == "CleverDict: \nx is y is z\n\nx['a'] == x.a == 'A'"
 
 class Test_Save_Functionality:
     def delete_log(self):

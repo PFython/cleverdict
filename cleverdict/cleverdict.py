@@ -10,6 +10,11 @@ Change log
 
 version 1.5.23  2020-97-16
 --------------------------
+Docstring added for info()
+info() now tests and reports x is y not x == y
+
+version 1.5.23  2020-97-16
+--------------------------
 _update renamed back to update
 info(noprint=True) changed to info(as_str=True)
 test added for info
@@ -327,12 +332,15 @@ class CleverDict(dict):
                     del self._aliases[alx]
 
     def info(self, as_str = False):
+        """
+        Prints or returns a string showing variable name equivalence
+        and object attribute/dictionary key equivalence.
+        """
         frame = inspect.currentframe().f_back.f_locals
-        self_value = locals()["self"]
-        # If more than one variable has the same value, use the most recent [-1]
-        ids = [k for k, v in frame.items() if v == self_value]
-        result = [__class__.__name__ + ": " + "\n" + " == ".join(ids) + "\n"]
-        id = ids[-1]
+        ids = [k for k, v in frame.items() if v is self]
+        result = [__class__.__name__ + ": " + "\n" + " is ".join(ids) + "\n"]
+        # If more than one variable has the same name, use the first in the list
+        id = ids[0]
         for k, v in self.items():
             parts = []
             with Expand(True):

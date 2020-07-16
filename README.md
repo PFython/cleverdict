@@ -6,7 +6,7 @@
 
 ```CleverDict``` is a hybrid Python data class which allows both ```object.attribute``` and ```dictionary['key']``` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary format into your objects... or vice versa... without having to write extra code just to handle the translation.
 
-The class also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your object's values to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to slavishly call your update function after every single operation where attributes (might) change.
+```CleverDict``` also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your object's values to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to slavishly call your update function after every operation where attributes (could possibly) change.
 
 
 ## INSTALLATION
@@ -37,7 +37,7 @@ or to cover all bases...
     'Knights of Ni'
 
 ### 2. DATA FROM OTHER OBJECTS
-You can import an existing object's data (but not its methods) directly using ```vars()``` and print a summary of all attributes using .info():
+You can import an existing object's data (but not its methods) directly using ```vars()``` and print a summary of all aliases using ```.info()```:
 
     >>> class X: pass
     >>> a = X(); a.name = "Percival"
@@ -45,16 +45,16 @@ You can import an existing object's data (but not its methods) directly using ``
     >>> x.info()
 
     CleverDict:
-    x == y == z
+    x is y is z
 
-    z['name'] == z.name == 'Percival'
+    x['name'] == x.name == 'Percival'
 
     >>> x.info(as_str=True)  # Returns a string e.g. for further parsing
     "CleverDict: \nx == y == z\n\nz['name'] == z.name == 'Percival'"
 
 
 ### 3. KEYWORD ARGUMENTS
-You can also supply keyword arguments like this:
+You can also create a ```CleverDict``` object using keyword arguments like this:
 
     >>> x = CleverDict(created = "today", review = "tomorrow")
 
@@ -99,12 +99,12 @@ By default ```CleverDict``` tries to find valid attribute names for dictionary k
     >>> x
     CleverDict({7: 'Seven'}, _aliases={'_7': 7, 'NumberSeven': 7}, _vars={})
 
-**Footnote 1** Most unicode letters are valid in attribute names since [PEP3131](https://www.python.org/dev/peps/pep-3131/), but ```CleverDict``` replaces other invalid characters such as punctuation marks with "```_```" on a first come, first served basis.  This can result in an ```KeyError``` (which you can get round by renaming the offending dictionary keys).  For example:
+**Footnote 1** Most unicode letters are valid in attribute names since [PEP3131](https://www.python.org/dev/peps/pep-3131/), but ```CleverDict``` replaces other invalid characters such as punctuation marks with "```_```" on a first come, first served basis.  This can result in a ```KeyError```, which you can get round by renaming the offending dictionary keys.  For example:
 
     >>> x = CleverDict({"one-two": "hypen", "one/two": "forward slash"})
     KeyError: "'one_two' already an alias for 'one-two'"
 
-**Footnote 2** Not everyone knows that when creating a Python dictionary, the keys ```0```, ```0.0```, and ```False``` are considered the same in Python.  Likewise ```1```, ```1.0```, and ```True```, and ```1234``` and ```1234.0```.  Also if you create a regular dictionary using more than one of these different identities, they will appear to 'overwrite' each other keeping the first Key specified but the last Value specified:
+**Footnote 2** Did you know that when creating a Python dictionary, the keys ```0```, ```0.0```, and ```False``` are considered the same in Python?  Likewise ```1```, ```1.0```, and ```True```, and ```1234``` and ```1234.0```?  If you create a regular dictionary using more than one of these different identities, they will appear to 'overwrite' each other keeping the first Key specified but the last Value specified:
 
     >>> x = {1: "one", True: "the truth"}
     >>> x
@@ -163,7 +163,12 @@ If you want to specify different ```.save()``` behaviours for different objects,
 
 
 ### 8. SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM
-We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```._aliases``` and ```_vars```.
+We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```._aliases```.  Variables which have been set directly in this way are stored in ```_vars```.
+
+    >>> x = CleverDict()
+    >>> x.setattr_direct("direct",False)
+    >>> x
+    CleverDict({}, _aliases={}, _vars={'direct': False})
 
 Here's one way you could create a ```.store``` attribute and customise the auto-save behaviour for example:
 
@@ -177,11 +182,9 @@ Here's one way you could create a ```.store``` attribute and customise the auto-
 
 ## CONTRIBUTING
 
-We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help with the following:
+We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
 
-It would be great if a future evoloution of ```CleverDict``` allowed it to be  'grafted on' to existing classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
-
-    For example if it were as easy as:
+For example it would be amazing if you could do something like this:
 
     ```
     >>> class MyDatetime(datetime.datetime, CleverDict):
@@ -196,6 +199,6 @@ It would be great if a future evoloution of ```CleverDict``` allowed it to be  '
 
 
 ## CREDITS
-```CleverDict``` was developed jointly by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```, and ```CleverDict``` was born*.
+```CleverDict``` was developed jointly by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class, originally based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```.
 
->(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully the new name raises a wry smile as well as being more memorable...
+>(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and also raises a wry smile amongst English speakers...
