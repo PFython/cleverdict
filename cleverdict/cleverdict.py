@@ -15,6 +15,7 @@ Added .info() method for displaying summary previously returned by __str__
 get_key() reinstated.
 Parameters added to main CleverDict class Docstring.
 Methods grouped and sorted by dunder, private, public.
+name_to_aliases renamed all_aliases
 
 version 1.5.2  2020-97-15
 -------------------------
@@ -62,44 +63,6 @@ class Expand:
 
     def __exit__(self, *args):
         CleverDict.expand = self.save_expand
-
-def name_to_aliases(name):
-    """
-    Returns all possible aliases for a given name.
-
-    Parameters
-    ----------
-    name : any
-
-    Return
-    ------
-    Aliases for name : list
-
-    By default the list will start with name, followed by all possible aliases for name.  However if CleverDict.expand == False, the list will only contain name.
-
-    CleverDict.expand should preferably be set via the context manager Expand.
-    """
-    result = [name]
-    if CleverDict.expand:
-        if name == hash(name):
-            result.append(f"_{int(name)}")
-            if name in (0, 1):
-                result.append(f"_{bool(name)}")
-        else:
-            if name != str(name):
-                name = str(name)
-                if name.isidentifier() and not keyword.iskeyword(name):
-                    result.append(str(name))
-
-            if not name or name[0].isdigit() or keyword.iskeyword(name):
-                norm_name = "_" + name
-            else:
-                norm_name = name
-
-            norm_name = "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(norm_name))
-            if name != norm_name:
-                result.append(norm_name)
-    return result
 
 class CleverDict(dict):
     """
@@ -151,7 +114,7 @@ class CleverDict(dict):
         if name in self._aliases:
             name = self._aliases[name]
         elif name not in self:
-            for al in name_to_aliases(name):
+            for al in all_aliases(name):
                 self._add_alias(name, al)
         super().__setitem__(name, value)
         self.save(name, value)
@@ -315,7 +278,7 @@ class CleverDict(dict):
         if not hasattr(alias, "__iter__") or isinstance(alias, str):
             alias = [alias]
         for al in alias:
-            for name in name_to_aliases(al):
+            for name in all_aliases(al):
                 self._add_alias(key, name)
 
     def delete_alias(self, alias):
@@ -348,7 +311,7 @@ class CleverDict(dict):
             if al in self:
                 raise KeyError(f"primary key {repr(al)} can't be deleted")
             del self._aliases[al]
-            for alx in name_to_aliases(al):
+            for alx in all_aliases(al):
                 if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
@@ -362,9 +325,9 @@ class CleverDict(dict):
         for k, v in self.items():
             parts = []
             with Expand(True):
-                for ak in name_to_aliases(k):
+                for ak in all_aliases(k):
                     parts.append(f"{id}[{repr(ak)}] == ")
-                for ak in name_to_aliases(k):
+                for ak in all_aliases(k):
                     if isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
                         parts.append(f"{id}.{ak} == ")
             parts.append(f"{repr(v)}")
@@ -377,6 +340,44 @@ class CleverDict(dict):
             return output
         else:
             print(output)
+
+def all_aliases(name):
+    """
+    Returns all possible aliases for a given name.
+
+    Parameters
+    ----------
+    name : any
+
+    Return
+    ------
+    Aliases for name : list
+
+    By default the list will start with name, followed by all possible aliases for name.  However if CleverDict.expand == False, the list will only contain name.
+
+    CleverDict.expand should preferably be set via the context manager Expand.
+    """
+    result = [name]
+    if CleverDict.expand:
+        if name == hash(name):
+            result.append(f"_{int(name)}")
+            if name in (0, 1):
+                result.append(f"_{bool(name)}")
+        else:
+            if name != str(name):
+                name = str(name)
+                if name.isidentifier() and not keyword.iskeyword(name):
+                    result.append(str(name))
+
+            if not name or name[0].isdigit() or keyword.iskeyword(name):
+                norm_name = "_" + name
+            else:
+                norm_name = name
+
+            norm_name = "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(norm_name))
+            if name != norm_name:
+                result.append(norm_name)
+    return result
 
 if __name__ == "__main__":
     pass

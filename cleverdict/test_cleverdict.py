@@ -377,14 +377,14 @@ class Test_Core_Functionality:
 
         CleverDict.expand = True
 
-    def test_name_to_aliases(self):
-        assert name_to_aliases("a") == ["a"]
-        assert name_to_aliases(True) == [True, "_1", "_True"]
-        assert name_to_aliases("3test test") == ["3test test", "_3test_test"]
+    def test_all_aliases(self):
+        assert all_aliases("a") == ["a"]
+        assert all_aliases(True) == [True, "_1", "_True"]
+        assert all_aliases("3test test") == ["3test test", "_3test_test"]
         with Expand(False):
-            assert name_to_aliases("a") == ["a"]
-            assert name_to_aliases(True) == [True]
-            assert name_to_aliases("3test test") == ["3test test"]
+            assert all_aliases("a") == ["a"]
+            assert all_aliases(True) == [True]
+            assert all_aliases("3test test") == ["3test test"]
 
     def test_setattr_direct(self):
         """
