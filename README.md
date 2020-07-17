@@ -101,7 +101,7 @@ By default ```CleverDict``` tries to find valid attribute names for dictionary k
     >>> x
     CleverDict({7: 'Seven'}, _aliases={}, _vars={})
     >>> x._7
-    KeyError: '_7'
+    AttributeError: '_7'
 
 
 ## 6. DEEPER DIVE INTO ATTRIBUTE NAMES
