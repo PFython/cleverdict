@@ -2,16 +2,15 @@ import inspect
 import keyword
 import itertools
 
-__version__ = "1.5.23"
+__version__ = "1.5.3"
 
 """
 Change log
 ==========
-version 1.6.0  2020-07-17
+version 1.5.3  2020-07-17
 --------------------------
 The method info() now sorts the names alphabetically, and uses the first to show the structure.
 If no name matches, the name x is used now (that used to cause a crash)
-
 Added tests for info()
 
 version 1.5.24  2020-07-16
