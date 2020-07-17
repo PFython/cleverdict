@@ -6,7 +6,7 @@
 
 ```CleverDict``` is a hybrid Python data class which allows both ```object.attribute``` and ```dictionary['key']``` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary format into your objects... or vice versa... without having to write extra code just to handle the translation.
 
-```CleverDict``` also calls a ```.save``` method whenever an attribute or dictionary value is created or changed.  Initially the ```.save```method does nothing, but you can overwrite it (once) with your own function to do useful things automatically every time an attribute changes in future e.g. pickle, encode, save data to a file or database, upload to the cloud etc. No more slavishly writing a call your own "save" function every... single... time...
+```CleverDict``` also calls a ```.save``` method whenever an attribute or dictionary value is created or changed.  Initially the ```.save```method does nothing, but you can overwrite it with your own function to do useful things automatically every time an attribute changes in future e.g. pickle, encode, save data to a file or database, upload to the cloud etc. No more slavishly writing a call your own "save" function every... single... time...
 
 
 ## 2. INSTALLATION
