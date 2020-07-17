@@ -6,7 +6,7 @@
 
 ```CleverDict``` is a hybrid Python data class which allows both ```object.attribute``` and ```dictionary['key']``` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary format into your objects... or vice versa... without having to write extra code just to handle the translation.
 
-```CleverDict``` also optionally triggers a ```.save()``` method (which you can adapt or overwrite) which it calls whenever an attribute or dictionary value is created or changed.  This is especially useful if you want your object's values to be automatically pickled, encoded, saved to a file or database, uploaded to the cloud etc. without having to slavishly call your update function after every operation where attributes (could possibly) change.
+```CleverDict``` also calls a ```.save``` method whenever an attribute or dictionary value is created or changed.  Initially the ```.save```method does nothing, but you can overwrite it (once) with your own function to do useful things automatically every time an attribute changes in future e.g. pickle, encode, save data to a file or database, upload to the cloud etc. No more slavishly writing a call your own "save" function every... single... time...
 
 
 ## 2. INSTALLATION
@@ -113,7 +113,7 @@ Did you know that the dictionary keys ```0```, ```0.0```, and ```False``` are co
     >>> x
     {1: 'the truth'}
 
-You'll be relieved to know ```CleverDict``` handles these cases but we thought it was worth mentioning in case you came across them first and wondered what the heck was going on!  You can inspect all the key names and .attribute aliases using the ```.info()``` method, as well as any aliases for the object itself:
+You'll be relieved to know ```CleverDict``` handles these cases but we thought it was worth mentioning in case you came across them first and wondered what the heck was going on!  *"Explicit is better than implicit"*, right?  You can inspect all the key names and .attribute aliases using the ```.info()``` method, as well as any aliases for the object itself:
 
     >>> x = y = z = CleverDict({1: "one", True: "the truth"})
     >>> x.info()
@@ -141,6 +141,7 @@ We've included the ```.setattr_direct()``` method in case you want to set an obj
 
     >>> x = CleverDict()
     >>> x.setattr_direct("direct",False)
+
     >>> x
     CleverDict({}, _aliases={}, _vars={'direct': False})
 
@@ -177,11 +178,11 @@ The example function above also appends output to a file, which you might want f
     ["Notional save to database: .total = 6 <class 'int'>",
     "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
 
-**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well as future ones.
+**NB**: The ```.save``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save``` method to all previously created ```CleverDict``` objects as well as future ones.
 
 
 ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
-When writing your own ```.save()``` function, you'll need to specify three arguments as follows:
+When writing your own ```.save``` function, you'll need to specify three arguments as follows:
 
 
     >>> def your_function(self, key: str, value: any):
@@ -193,8 +194,8 @@ When writing your own ```.save()``` function, you'll need to specify three argum
 * **value**: anything
 
 ## 10. SETTING DIFFERENT AUTO-SAVE FUNCTIONS FOR DIFFERENT OBJECTS
-If you want to specify different ```.save()``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different
-```.save()``` function for each subclass e.g.:
+If you want to specify different ```.save``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different
+```.save``` function for each subclass e.g.:
 
     >>> class Type1(CleverDict): pass
     >>> Type1.save = my_save_function1
@@ -207,7 +208,7 @@ If you want to specify different ```.save()``` behaviours for different objects,
 
 We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
 
-For example it would be amazing if you could do something like this:
+For example it would be amazing if we could do something as simple as this:
 
     >>> class MyDatetime(datetime.datetime, CleverDict):
     ...     pass
@@ -222,4 +223,4 @@ For example it would be amazing if you could do something like this:
 ## 12. CREDITS
 ```CleverDict``` was developed jointly by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class, originally based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```.
 
->(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and also raises a wry smile amongst English speakers...
+>(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a wry smile...
