@@ -2,13 +2,13 @@ import inspect
 import keyword
 import itertools
 
-__version__ = "1.6"
+__version__ = "1.6.0"
 
 """
 Change log
 ==========
 
-version 1.6
+version 1.6.0
 --------------------------
 Updated README
 
