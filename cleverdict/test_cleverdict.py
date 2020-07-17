@@ -184,9 +184,9 @@ class Test_Core_Functionality:
             x["None"]
 
     def test_use_as_dict(self):
-        d = dict.fromkeys((0, 1, 23, 'what?', 'a'), 'test')
+        d = dict.fromkeys((0, 1, 23, "what?", "a"), "test")
         x = CleverDict(d)
-        x.setattr_direct('b', 2)
+        x.setattr_direct("b", 2)
         assert dict(x) == d
 
     def test_repr_and_eq(self):
@@ -200,41 +200,31 @@ class Test_Core_Functionality:
         x[True] = 3
         x.a = 4
         x["what?"] = 5
-        x.add_alias('a', 'c')
+        x.add_alias("a", "c")
         y = eval(repr(x))
         assert x == y
         y.b = 6
         assert x != y
-        x=CleverDict()
+        x = CleverDict()
         assert eval(repr(x)) == x
         with Expand(False):
-            x=CleverDict({True:1})
+            x = CleverDict({True: 1})
             assert len(x.get_aliases()) == 1
             assert CleverDict(eval(repr(x))) == x
             # check whether _expand has been properly reset
-            x=CleverDict({True:1})
+            x = CleverDict({True: 1})
             assert len(x.get_aliases()) == 1
         # empty dict with one variable
-        x=CleverDict()
-        x.setattr_direct('a', 1)
+        x = CleverDict()
+        x.setattr_direct("a", 1)
         assert len(x.get_aliases()) == 0
         assert eval(repr(x)) == x
 
     def testupdate(self):
-        x = CleverDict.fromkeys((0, 1, 2, 'a', 'what?', 'return'), 0)
-        y=CleverDict({0: 2, 'c': 3,})
+        x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
+        y = CleverDict({0: 2, "c": 3})
         x.update(y)
-        assert x == CleverDict({0:2, 1:0, 2:0, 'a':0, 'what?':0, 'return':0, 'c':3})
-
-
-    def test_info(self):
-        with Expand(False):
-            x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
-            x.setattr_direct("b", "B")
-            z = y = x
-            assert x.info(noprint=True) == "CleverDict: \nx == z == y\n\ny[0] == y['_0'] == y['_False'] == y._0 == y._False == 0\ny[1] == y['_1'] == y['_True'] == y._1 == y._True == 0\ny[2] == y['_2'] == y._2 == 0\ny['a'] == y.a == 0\ny['what?'] == y['what_'] == y.what_ == 0\ny['return'] == y['_return'] == y._return == 0\ny.b == 'B'"
-            # test whether CleverDict.expand has been maintained properly
-            assert not CleverDict.expand
+        assert x == CleverDict({0: 2, 1: 0, 2: 0, "a": 0, "what?": 0, "return": 0, "c": 3})
 
     def test_del(self):
         x = CleverDict()
@@ -352,11 +342,11 @@ class Test_Core_Functionality:
         assert x.get_aliases(1) == [1, "_1", "_True"]
 
         CleverDict.expand = False
-        x = CleverDict({1:1})
+        x = CleverDict({1: 1})
         with pytest.raises(AttributeError):
             x._1
         CleverDict.expand = True
-        x = CleverDict({1:1})
+        x = CleverDict({1: 1})
         x._1
 
     def test_expand_context_manager(self):
@@ -401,10 +391,37 @@ class Test_Core_Functionality:
             x.get_key("a")
         assert x.get_aliases() == []
 
-    def test_info(self):
-        """ .info should return a string if as_str == True """
-        x = y = z = CleverDict(a="A")
-        assert x.info(as_str=True) == "CleverDict: \nx is y is z\n\nx['a'] == x.a == 'A'"
+    def test_info(self, capsys):
+        global c  # globals are not 'seen' by info()
+        z = b = a = c = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
+        c.setattr_direct("b", "B")
+        c.info()  # this prints to stdout
+        out, err = capsys.readouterr()
+        assert out == dedent(
+            """\
+CleverDict:
+    a is b is z
+    a[0] == a['_0'] == a['_False'] == a._0 == a._False == 0
+    a[1] == a['_1'] == a['_True'] == a._1 == a._True == 0
+    a[2] == a['_2'] == a._2 == 0
+    a['a'] == a.a == 0
+    a['what?'] == a['what_'] == a.what_ == 0
+    a['return'] == a['_return'] == a._return == 0
+    a.b == 'B'
+"""
+        )
+        z = b = a = c = CleverDict.fromkeys(["a"], "A")
+        assert c.info(as_str=True) == "CleverDict:\n    a is b is z\n    a['a'] == a.a == 'A'"
+        del a
+        assert c.info(as_str=True) == "CleverDict:\n    b is z\n    b['a'] == b.a == 'A'"
+        del b
+        assert c.info(as_str=True) == "CleverDict:\n    z['a'] == z.a == 'A'"
+        del z
+        assert c.info(as_str=True) == "CleverDict:\n    x['a'] == x.a == 'A'"
+
+    def test_version(self):
+        assert isinstance(__version__, str)
+
 
 class Test_Save_Functionality:
     def delete_log(self):
@@ -420,9 +437,11 @@ class Test_Save_Functionality:
         CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         with open("example.log", "r") as file:
             log = file.read()
-        assert (
-            log
-            == "Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"
+        assert log == dedent(
+            """\
+Notional save to database: .total = 6 <class 'int'>
+Notional save to database: .usergroup = Knights of Ni <class 'str'>
+"""
         )
         self.delete_log()
         CleverDict.save = dummy_save_function
