@@ -4,36 +4,42 @@ import itertools
 
 __version__ = "1.5.23"
 
-'''
+"""
 Change log
 ==========
+version 1.6.0  2020-07-17
+--------------------------
+The method info() now sorts the names alphabetically, and uses the first to show the structure.
+If no name matches, the name x is used now (that used to cause a crash)
 
-version 1.5.23  2020-97-16
+Added tests for info()
+
+version 1.5.24  2020-07-16
 --------------------------
 Docstring added for info()
 info() now tests and reports x is y not x == y
 
-version 1.5.23  2020-97-16
+version 1.5.23  2020-07-16
 --------------------------
 _update renamed back to update
 info(noprint=True) changed to info(as_str=True)
 test added for info
 
-version 1.5.22  2020-97-16
+version 1.5.22  2020-07-16
 --------------------------
 README updated
 example_save_function includes line spaces and prints output
 Methods grouped and sorted by dunder, private, public.
 name_to_aliases renamed: all_aliases
 
-version 1.5.21  2020-97-16
+version 1.5.21  2020-07-16
 --------------------------
 __str__ now defaults to __repr__
 Added .info() method for displaying summary previously returned by __str__
 get_key() reinstated.
 Parameters added to main CleverDict class Docstring.
 
-version 1.5.2  2020-97-15
+version 1.5.2  2020-07-15
 -------------------------
 
 Wording of Docstrings, README, and tests updated.
@@ -57,7 +63,8 @@ In order to support evalation from __repr__, the __init__ method has been change
 The implemenation of several methods is more compact and more stable by reusing functionality.
 
 More and improved tests.
-'''
+"""
+
 
 class Expand:
     def __init__(self, ok):
@@ -79,6 +86,7 @@ class Expand:
 
     def __exit__(self, *args):
         CleverDict.expand = self.save_expand
+
 
 class CleverDict(dict):
     """
@@ -166,10 +174,10 @@ class CleverDict(dict):
         return NotImplemented
 
     def __repr__(self):
-       _mapping = dict(self.items())
-       _aliases = {k: v for k, v in self._aliases.items() if k not in self}
-       _vars = {k: v for k,v in vars(self).items() if k != '_aliases'}
-       return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+        _mapping = dict(self.items())
+        _aliases = {k: v for k, v in self._aliases.items() if k not in self}
+        _vars = {k: v for k, v in vars(self).items() if k != "_aliases"}
+        return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
     def _add_alias(self, name, alias):
         """
@@ -184,7 +192,14 @@ class CleverDict(dict):
 
     def update(self, _mapping=(), **kwargs):
         """
-        Finally updates the objects values according to a mapping or iterable."""
+        Parameters
+        ----------
+        The same as dict.update(), i.e.
+            D.update([E, ]**F) -> None.  Update D from dict/iterable E and F.
+            If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+            If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
+            In either case, this is followed by: for k in F:  D[k] = F[k]
+        """
         if hasattr(_mapping, "items"):
             _mapping = getattr(_mapping, "items")()
 
@@ -192,14 +207,26 @@ class CleverDict(dict):
             self.__setitem__(k, v)
 
     @classmethod
-    def fromkeys(cls, keys, value):
+    def fromkeys(cls, iterable, value):
         """
         Instantiates an object using supplied keys/aliases and values e.g.
 
         >>> x = CleverDict().fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
 
+        Parameters
+        ----------
+        iterable: iterable
+            used as the keys for the new CleverDict
+
+        value: any
+            used as the values for the new CleverDict
+
+        Returns
+        -------
+        New CleverDict with keys from iterable and values equal to value.
+
         """
-        return CleverDict({k: value for k in keys})
+        return CleverDict({k: value for k in iterable})
 
     def save(self, name, value):
         pass
@@ -331,16 +358,21 @@ class CleverDict(dict):
                 if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
-    def info(self, as_str = False):
+    def info(self, as_str=False):
         """
         Prints or returns a string showing variable name equivalence
         and object attribute/dictionary key equivalence.
         """
+        indent = "    "
         frame = inspect.currentframe().f_back.f_locals
-        ids = [k for k, v in frame.items() if v is self]
-        result = [__class__.__name__ + ": " + "\n" + " is ".join(ids) + "\n"]
-        # If more than one variable has the same name, use the first in the list
-        id = ids[0]
+        ids = sorted(k for k, v in frame.items() if v is self)
+        result = [__class__.__name__ + ":"]
+        if ids:
+            if len(ids) > 1:
+                result.append(indent + " is ".join(ids))
+            id = ids[0]  # If more than one variable has the same name, use the first in the list
+        else:
+            id = "x"
         for k, v in self.items():
             parts = []
             with Expand(True):
@@ -350,15 +382,16 @@ class CleverDict(dict):
                     if isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
                         parts.append(f"{id}.{ak} == ")
             parts.append(f"{repr(v)}")
-            result.append("".join(parts))
+            result.append(indent + "".join(parts))
         for k, v in vars(self).items():
             if k not in ("_aliases"):
-                result.append(f"{id}.{k} == {repr(v)}")
+                result.append(f"{indent}{id}.{k} == {repr(v)}")
         output = "\n".join(result)
         if as_str:
             return output
         else:
             print(output)
+
 
 def all_aliases(name):
     """
@@ -372,7 +405,8 @@ def all_aliases(name):
     ------
     Aliases for name : list
 
-    By default the list will start with name, followed by all possible aliases for name.  However if CleverDict.expand == False, the list will only contain name.
+    By default the list will start with name, followed by all possible aliases for name.
+    However if CleverDict.expand == False, the list will only contain name.
 
     CleverDict.expand should preferably be set via the context manager Expand.
     """
@@ -398,6 +432,6 @@ def all_aliases(name):
                 result.append(norm_name)
     return result
 
+
 if __name__ == "__main__":
     pass
-
