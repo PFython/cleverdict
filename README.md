@@ -77,6 +77,26 @@ Or by using ```vars()``` to import another object's data (but not its methods):
     >>> x
     CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
 
+Or using the ```.fromlist()``` method like this:
+
+    >>> x = CleverDict().fromlist([(1, "one"), [2, "two"], {3, "three"}])
+
+    >>> x._1
+    'one'
+    >>> x._2
+    'two'
+    >>> x._3
+    'three'
+
+The ```.fromlist()``` method was added specifically to help with serialisation issues like json.dumps() converting numeric dictionary keys to strings, and for use with Client/Server apps such as the excellent Anvil.works which allows you to pass custom objects of a 'portable' Class between Client and Server.
+
+To generate the corresponding list of key/value pairs from a CleverDict object, just use the ```.tolist()``` method like this:
+
+    >>> x = CleverDict({1: "one", 2: "two"})
+
+    >>> x.tolist()
+    [(1, 'one'), (2, 'two')]
+
 
 ## 5. ATTRIBUTE NAMES AND ALIASES
 

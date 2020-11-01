@@ -2,11 +2,18 @@ import inspect
 import keyword
 import itertools
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
 
 """
 Change log
 ==========
+
+version 1.7.0 2020-11-01
+--------------------------
+Added methods .fromlist and .tolist
+Updated test_cleverdict.py
+Updated README
+Updated setup.py to show support for Python 3.2+
 
 version 1.6.0
 --------------------------
@@ -232,6 +239,46 @@ class CleverDict(dict):
 
         """
         return CleverDict({k: value for k in iterable})
+
+    @classmethod
+    def fromlist(cls, kv_list):
+        """
+        Instantiates an object using supplied keys/values from a list e.g.
+
+        >>> x = CleverDict().fromlist([(1, "one"), [2, "two"]])
+
+        Parameters
+        ----------
+        kv_list: list of k,v pairs (as lists or tuples)
+            used as the keys and values for the new CleverDict
+
+        Returns
+        -------
+        New CleverDict with keys and values from the supplied list.
+
+        """
+        return CleverDict({k:v for k,v in kv_list})
+
+    def tolist(self):
+        """
+        Creates a (json-serialisable) list of k,v pairs as a list of tuples.
+        Main use case is Client/Server apps where returning a CleverDict object
+        or a dictionary with numeric keys (which get converted to strings by
+        json.dumps for example).  This output can be used to instantiate a new
+        CleverDict object (e.g. when passing between Client/Server code) using
+        the .fromlist() method.
+
+        Parameters
+        ----------
+        self: a CleverDict instance
+
+        Returns
+        -------
+        A list of k,v pairs as a list of tuples e.g.
+        [(1, "one"), (2, "two")]
+
+        """
+        return list(self.items())
 
     def save(self, name, value):
         pass
