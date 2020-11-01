@@ -66,7 +66,7 @@ Or using the ```.fromkeys()``` method like this:
     >>> x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
 
     >>> x
-    CleverDict([('Abigail', 'Year 9'), ('Tino', 'Year 9'), ('Isaac', 'Year 9')])
+    CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})
 
 Or by using ```vars()``` to import another object's data (but not its methods):
 
