@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 1.6.0
+Version: 1.7.0
 Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT
-Download-URL: https://github.com/pfython/cleverdict/archive/v_1.6.0.tar.gz
+Download-URL: https://github.com/pfython/cleverdict/archive/v_1.7.0.tar.gz
 Description: # CleverDict
         
         ![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
@@ -85,6 +85,26 @@ Description: # CleverDict
         
             >>> x
             CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
+        
+        Or using the ```.fromlist()``` method like this:
+        
+            >>> x = CleverDict().fromlist([(1, "one"), [2, "two"], {3, "three"}])
+        
+            >>> x._1
+            'one'
+            >>> x._2
+            'two'
+            >>> x._3
+            'three'
+        
+        The ```.fromlist()``` method was added specifically to help with serialisation issues like json.dumps() converting numeric dictionary keys to strings, and for use with Client/Server apps such as the excellent Anvil.works which allows you to pass custom objects of a 'portable' Class between Client and Server.
+        
+        To generate the corresponding list of key/value pairs from a CleverDict object, just use the ```.tolist()``` method like this:
+        
+            >>> x = CleverDict({1: "one", 2: "two"})
+        
+            >>> x.tolist()
+            [(1, 'one'), (2, 'two')]
         
         
         ## 5. ATTRIBUTE NAMES AND ALIASES
@@ -232,7 +252,7 @@ Description: # CleverDict
         ## 12. CREDITS
         ```CleverDict``` was developed jointly by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class, originally based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```.
         
-        >(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a wry smile...
+        >(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a smile as you think about the Clever Dicks who created it ;)
         
 Keywords: data,attribute,key,value,attributes,keys,values,database,utility,tool,clever,dictionary,att,__getattr__,__setattr__,getattr,setattr
 Platform: UNKNOWN
@@ -240,5 +260,12 @@ Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
 Classifier: Topic :: Software Development :: Object Brokering
 Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.2
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
 Description-Content-Type: text/markdown
