@@ -88,9 +88,9 @@ Or using the ```.fromlist()``` method like this:
     >>> x._3
     'three'
 
-The ```.fromlist()``` method was added specifically to help with serialisation issues like json.dumps() converting numeric dictionary keys to strings, and for use with Client/Server apps such as the excellent Anvil.works which allows you to pass custom objects of a 'portable' Class between Client and Server.
+The ```.fromlist()``` method was added specifically to help with serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps such as the excellent Anvil.works which allows you to pass custom objects of a 'portable' Class between Client and Server.
 
-To generate the corresponding list of key/value pairs from a CleverDict object, just use the ```.tolist()``` method like this:
+To generate the corresponding list of key/value pairs from a ```CleverDict``` object, just use the ```.tolist()``` method like this:
 
     >>> x = CleverDict({1: "one", 2: "two"})
 
@@ -160,7 +160,7 @@ Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/
 We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```._aliases```.  Variables which have been set directly in this way are stored in ```_vars```.
 
     >>> x = CleverDict()
-    >>> x.setattr_direct("direct",False)
+    >>> x.setattr_direct("direct", False)
 
     >>> x
     CleverDict({}, _aliases={}, _vars={'direct': False})
@@ -228,7 +228,7 @@ If you want to specify different ```.save``` behaviours for different objects, c
 
 We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
 
-For example it would be amazing if we could do something as simple as this:
+For example it would be great if we could graft on the CleverDict methods to other Classes, something like this:
 
     >>> class MyDatetime(datetime.datetime, CleverDict):
     ...     pass
@@ -238,6 +238,11 @@ For example it would be amazing if we could do something as simple as this:
     4
     >>> mdt['hour']
     4
+
+Unfortunately at the moment this raises an error:
+```TypeError: multiple bases have instance lay-out conflict```
+
+... which is beyond the author's current Python level!
 
 
 ## 12. CREDITS
