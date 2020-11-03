@@ -69,10 +69,10 @@ Or using a list of tuple/list pairs:
     'one'
     >>> x._2
     'two'
-    >>> x._3_
+    >>> x._3
     'three'
 
-    This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what object can be passed between the Client and Server (*).
+This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what object can be passed between the Client and Server (*).
 
 
 Or using the ```.fromkeys()``` method like this:
