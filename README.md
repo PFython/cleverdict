@@ -151,7 +151,7 @@ You'll be relieved to know ```CleverDict``` handles these cases but we thought i
 
     "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
 
-Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?  ```CleverDict``` handles this and replaces all remaining *invalid* characters such as punctuation marks with "```_```" on a first come, first served basis.  This can result in a ```KeyError```, which you can get round by renaming the offending dictionary keys.  For example:
+Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?  ```CleverDict``` handles this and replaces all remaining *invalid* characters such as punctuation marks with "```_```" on a first come, first served basis.  To avoid duplicates or over-writing, a ```KeyError``` is raised if required, which is your prompt to rename the offending dictionary keys!  For example:
 
     >>> x = CleverDict({"one-two": "hypen",
                         "one/two": "forward slash"})
@@ -161,7 +161,7 @@ Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/
                         "one_or_two": "forward slash"})
 
 ## 7. SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM
-We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```._aliases```.  Variables which have been set directly in this way are stored in ```_vars```.
+We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally by ```CleverDict``` to store aliases in ```._aliases```.  Any variables which are set directly with ```.setattr_direct()``` are stored in ```_vars```.
 
     >>> x = CleverDict()
     >>> x.setattr_direct("direct", False)
@@ -180,7 +180,7 @@ Here's one way you could create a ```.store``` attribute and customise the auto-
             self.store.append((name, value))
 
 ## 8. THE AUTO-SAVE FEATURE
-You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save``` method with your own:
+You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed, for example to save you remembering to update a database, save to a file, or synchronise with cloud storage etc.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save``` method with your own:
 
     >>> from cleverdict.test_cleverdict import example_save_function
     >>> CleverDict.save = example_save_function
@@ -218,8 +218,7 @@ When writing your own ```.save``` function, you'll need to specify three argumen
 * **value**: anything
 
 ## 10. SETTING DIFFERENT AUTO-SAVE FUNCTIONS FOR DIFFERENT OBJECTS
-If you want to specify different ```.save``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different
-```.save``` function for each subclass e.g.:
+If you want to specify different ```.save``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different ```.save``` function for each subclass e.g.:
 
     >>> class Type1(CleverDict): pass
     >>> Type1.save = my_save_function1
@@ -230,9 +229,9 @@ If you want to specify different ```.save``` behaviours for different objects, c
 
 ## 11. CONTRIBUTING
 
-We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
+We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without requiring a rewrite/overwrite of the original class.
 
-For example it would be great if we could graft on the CleverDict methods to other Classes, something like this:
+For example it would be great if we could graft on the CleverDict functionality to other Classes, something like this:
 
     >>> class MyDatetime(datetime.datetime, CleverDict):
     ...     pass
@@ -252,4 +251,4 @@ Unfortunately at the moment this raises an error:
 ## 12. CREDITS
 ```CleverDict``` was developed jointly by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class, originally based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```.
 
->(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a smile as you think about the Clever Dicks who created it ;)
+>(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a smile as future user imagine the Clever Dicks who created it ;)
