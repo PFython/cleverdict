@@ -113,7 +113,7 @@ By default ```CleverDict``` tries to find valid attribute names for dictionary k
     >>> x
     CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})
 
-```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._alias```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original key will never be deleted, even if all aliases and .attributes are removed:
+```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._alias```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
 
     >>> x.add_alias(7, "NumberSeven")
 
