@@ -63,7 +63,7 @@ You can also create a ```CleverDict``` instance using keyword arguments like thi
 
 Or using a list of tuple/list pairs:
 
-    >>> x = CleverDict().fromlist([(1, "one"), [2, "two"], (3, "three")])
+    >>> x = CleverDict([(1, "one"), [2, "two"], (3, "three")])
 
     >>> x._1
     'one'
@@ -72,7 +72,7 @@ Or using a list of tuple/list pairs:
     >>> x._3
     'three'
 
-This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what object can be passed between the Client and Server (*).
+This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what data types can be passed between the Client and Server (*).
 
 
 Or using the ```.fromkeys()``` method like this:
@@ -92,7 +92,7 @@ Or by using ```vars()``` to import another object's data (but not its methods):
     CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
 
 
-(*) You can use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object:
+(*) You can also use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object e.g. for Client/Server serialisation:
 
     >>> x = CleverDict({1: "one", 2: "two"})
 
