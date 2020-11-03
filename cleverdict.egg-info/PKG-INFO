@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 1.7.0
+Version: 1.7.2
 Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT
-Download-URL: https://github.com/pfython/cleverdict/archive/v_1.7.0.tar.gz
+Download-URL: https://github.com/pfython/cleverdict/archive/v_1.7.2.tar.gz
 Description: # CleverDict
         
         ![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
@@ -70,12 +70,26 @@ Description: # CleverDict
             >>> x['review']
             'tomorrow'
         
+        Or using a list of tuple/list pairs:
+        
+            >>> x = CleverDict().fromlist([(1, "one"), [2, "two"], (3, "three")])
+        
+            >>> x._1
+            'one'
+            >>> x._2
+            'two'
+            >>> x._3_
+            'three'
+        
+            This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what object can be passed between the Client and Server (*).
+        
+        
         Or using the ```.fromkeys()``` method like this:
         
             >>> x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
         
             >>> x
-            CleverDict([('Abigail', 'Year 9'), ('Tino', 'Year 9'), ('Isaac', 'Year 9')])
+            CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})
         
         Or by using ```vars()``` to import another object's data (but not its methods):
         
@@ -86,25 +100,15 @@ Description: # CleverDict
             >>> x
             CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
         
-        Or using the ```.fromlist()``` method like this:
         
-            >>> x = CleverDict().fromlist([(1, "one"), [2, "two"], {3, "three"}])
-        
-            >>> x._1
-            'one'
-            >>> x._2
-            'two'
-            >>> x._3
-            'three'
-        
-        The ```.fromlist()``` method was added specifically to help with serialisation issues like json.dumps() converting numeric dictionary keys to strings, and for use with Client/Server apps such as the excellent Anvil.works which allows you to pass custom objects of a 'portable' Class between Client and Server.
-        
-        To generate the corresponding list of key/value pairs from a CleverDict object, just use the ```.tolist()``` method like this:
+        (*) You can use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object:
         
             >>> x = CleverDict({1: "one", 2: "two"})
         
             >>> x.tolist()
             [(1, 'one'), (2, 'two')]
+        
+        
         
         
         ## 5. ATTRIBUTE NAMES AND ALIASES
@@ -169,7 +173,7 @@ Description: # CleverDict
         We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```._aliases```.  Variables which have been set directly in this way are stored in ```_vars```.
         
             >>> x = CleverDict()
-            >>> x.setattr_direct("direct",False)
+            >>> x.setattr_direct("direct", False)
         
             >>> x
             CleverDict({}, _aliases={}, _vars={'direct': False})
@@ -237,7 +241,7 @@ Description: # CleverDict
         
         We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
         
-        For example it would be amazing if we could do something as simple as this:
+        For example it would be great if we could graft on the CleverDict methods to other Classes, something like this:
         
             >>> class MyDatetime(datetime.datetime, CleverDict):
             ...     pass
@@ -247,6 +251,11 @@ Description: # CleverDict
             4
             >>> mdt['hour']
             4
+        
+        Unfortunately at the moment this raises an error:
+        ```TypeError: multiple bases have instance lay-out conflict```
+        
+        ... which is beyond the author's current Python level!
         
         
         ## 12. CREDITS
@@ -260,10 +269,6 @@ Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
 Classifier: Topic :: Software Development :: Object Brokering
 Classifier: License :: OSI Approved :: MIT License
-Classifier: Programming Language :: Python :: 3.2
-Classifier: Programming Language :: Python :: 3.3
-Classifier: Programming Language :: Python :: 3.4
-Classifier: Programming Language :: Python :: 3.5
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8

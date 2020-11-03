@@ -69,9 +69,9 @@ class Test_Initialisation:
         assert x._1 == "val"
         assert x.what_ == "val"
 
-    def test_creation_using_fromlist(self):
+    def test_creation_using_lis(self):
         """ Works for initiating using a list of iterables """
-        x = CleverDict().fromlist([(1, "one"), [2, "two"], {3, "three"}])
+        x = CleverDict([(1, "one"), [2, "two"], {3, "three"}])
         assert x._1 == "one"
         assert x._2 == "two"
         assert x._3 == "three"
