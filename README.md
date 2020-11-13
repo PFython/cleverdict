@@ -180,7 +180,7 @@ Here's one way you could create a ```.store``` attribute and customise the auto-
             self.store.append((name, value))
 
 ## 8. THE AUTO-SAVE FEATURE
-You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed, for example to save you remembering to update a database, save to a file, or synchronise with cloud storage etc.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save``` method with your own:
+You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed, for example to save you remembering to update a database, save to a file, or synchronise with cloud storage etc.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save()``` method with your own:
 
     >>> from cleverdict.test_cleverdict import example_save_function
     >>> CleverDict.save = example_save_function
@@ -202,11 +202,11 @@ The example function above also appends output to a file, which you might want f
     ["Notional save to database: .total = 6 <class 'int'>",
     "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
 
-**NB**: The ```.save``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save``` method to all previously created ```CleverDict``` objects as well as future ones.
+**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save()``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well as future ones.
 
 
 ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
-When writing your own ```.save``` function, you'll need to specify three arguments as follows:
+When writing your own ```.save()``` function, you'll need to specify three arguments as follows:
 
 
     >>> def your_function(self, key: str, value: any):
@@ -217,8 +217,9 @@ When writing your own ```.save``` function, you'll need to specify three argumen
 * **key**: a valid Python ```.attribute``` key preferably, otherwise you'll only be able to access it using ```dictionary['key']``` notation later on.
 * **value**: anything
 
-## 10. SETTING DIFFERENT AUTO-SAVE FUNCTIONS FOR DIFFERENT OBJECTS
-If you want to specify different ```.save``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different ```.save``` function for each subclass e.g.:
+## 10. HANDY TIPS FOR SUBCLASSING
+
+If you want to specify different ```.save()``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different ```.save()``` function for each subclass e.g.:
 
     >>> class Type1(CleverDict): pass
     >>> Type1.save = my_save_function1
@@ -226,6 +227,35 @@ If you want to specify different ```.save``` behaviours for different objects, c
     >>> class Type2(CleverDict): pass
     >>> Type2.save = my_save_function2
 
+When you create a subclass of `CleverDict` remember to call `super().__init__()` *before* trying to set any further class or object attributes, otherwise you'll run into trouble:
+
+    class Movie(CleverDict):
+        index = []
+        def __init__(self, title, **kwargs):
+            super().__init__(**kwargs)
+            self.title = title
+            Movie.index += [self]
+
+In the example above we created a simple class variable `.index` to keep a list of instances for future reference:
+
+    >>> x = Movie("The Wizard of Oz")
+    >>> print(Movie.index)
+    [Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]
+
+
+You might like to add a custom `__str__()` method to your subclass, for example calling on the `.info(as_str=True)` method:
+
+    def __str__(self):
+        output = self.info(as_str=True)
+        return output.replace("CleverDict", type(self).__name__, 1)
+
+
+This allows you to print your objects' attributes with ease:
+
+    >>> x = Movie("The Wizard of Oz")
+    >>> print(x)
+    Movie:
+        self['title'] == self.title == 'The Wizard of Oz"
 
 ## 11. CONTRIBUTING
 
@@ -233,8 +263,9 @@ We'd love to see Pull Requests (and relevant tests) from other contributors, par
 
 For example it would be great if we could graft on the CleverDict functionality to other Classes, something like this:
 
-    >>> class MyDatetime(datetime.datetime, CleverDict):
-    ...     pass
+    >>> class MyDatetime(CleverDict,datetime.datetime):
+            def __init__(self, title, **kwargs):
+                super().__init__(**kwargs)
 
     >>> mdt = MyDatetime.now()
     >>> mdt.hour
