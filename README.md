@@ -276,7 +276,7 @@ For example it would be great if we could graft on the CleverDict functionality 
 Unfortunately at the moment this raises an error:
 ```TypeError: multiple bases have instance lay-out conflict```
 
-... which is beyond the author's current Python level!
+... which is beyond the author's current Python level to solve!
 
 
 ## 12. CREDITS
