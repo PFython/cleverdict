@@ -5,14 +5,14 @@ from setuptools import setup, find_packages
 NAME = "cleverdict"
 URL = f'https://github.com/pfython/{NAME}'
 HERE = pathlib.Path(__file__).parent
-VERSION = "1.7.2"
+VERSION = "1.7.3"
 
 setup(name = 'cleverdict',
       packages = find_packages(),
       version = VERSION,
       license='MIT',
       description = 'A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.',
-      long_description=README,
+      long_description=(HERE / "README.md").read_text(),
       long_description_content_type="text/markdown",
       author = 'Peter Fison',
       author_email = 'peter@southwestlondon.tv',

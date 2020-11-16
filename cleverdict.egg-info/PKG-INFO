@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 1.7.2
+Version: 1.7.3
 Summary: A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT
-Download-URL: https://github.com/pfython/cleverdict/archive/v_1.7.2.tar.gz
+Download-URL: https://github.com/pfython/cleverdict/archive/1.7.3.tar.gz
 Description: # CleverDict
         
         ![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
@@ -72,16 +72,16 @@ Description: # CleverDict
         
         Or using a list of tuple/list pairs:
         
-            >>> x = CleverDict().fromlist([(1, "one"), [2, "two"], (3, "three")])
+            >>> x = CleverDict([(1, "one"), [2, "two"], (3, "three")])
         
             >>> x._1
             'one'
             >>> x._2
             'two'
-            >>> x._3_
+            >>> x._3
             'three'
         
-            This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what object can be passed between the Client and Server (*).
+        This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what data types can be passed between the Client and Server (*).
         
         
         Or using the ```.fromkeys()``` method like this:
@@ -101,7 +101,7 @@ Description: # CleverDict
             CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
         
         
-        (*) You can use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object:
+        (*) You can also use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object e.g. for Client/Server serialisation:
         
             >>> x = CleverDict({1: "one", 2: "two"})
         
@@ -122,7 +122,7 @@ Description: # CleverDict
             >>> x
             CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})
         
-        ```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._alias```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original key will never be deleted, even if all aliases and .attributes are removed:
+        ```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._alias```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
         
             >>> x.add_alias(7, "NumberSeven")
         
@@ -160,7 +160,7 @@ Description: # CleverDict
         
             "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
         
-        Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?  ```CleverDict``` handles this and replaces all remaining *invalid* characters such as punctuation marks with "```_```" on a first come, first served basis.  This can result in a ```KeyError```, which you can get round by renaming the offending dictionary keys.  For example:
+        Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?  ```CleverDict``` handles this and replaces all remaining *invalid* characters such as punctuation marks with "```_```" on a first come, first served basis.  To avoid duplicates or over-writing, a ```KeyError``` is raised if required, which is your prompt to rename the offending dictionary keys!  For example:
         
             >>> x = CleverDict({"one-two": "hypen",
                                 "one/two": "forward slash"})
@@ -170,7 +170,7 @@ Description: # CleverDict
                                 "one_or_two": "forward slash"})
         
         ## 7. SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM
-        We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally to store aliases in ```._aliases```.  Variables which have been set directly in this way are stored in ```_vars```.
+        We've included the ```.setattr_direct()``` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally by ```CleverDict``` to store aliases in ```._aliases```.  Any variables which are set directly with ```.setattr_direct()``` are stored in ```_vars```.
         
             >>> x = CleverDict()
             >>> x.setattr_direct("direct", False)
@@ -189,7 +189,7 @@ Description: # CleverDict
                     self.store.append((name, value))
         
         ## 8. THE AUTO-SAVE FEATURE
-        You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save``` method with your own:
+        You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed, for example to save you remembering to update a database, save to a file, or synchronise with cloud storage etc.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save()``` method with your own:
         
             >>> from cleverdict.test_cleverdict import example_save_function
             >>> CleverDict.save = example_save_function
@@ -211,11 +211,11 @@ Description: # CleverDict
             ["Notional save to database: .total = 6 <class 'int'>",
             "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
         
-        **NB**: The ```.save``` method is a *class* method, so changing ```CleverDict.save``` will apply the new ```.save``` method to all previously created ```CleverDict``` objects as well as future ones.
+        **NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save()``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well as future ones.
         
         
         ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
-        When writing your own ```.save``` function, you'll need to specify three arguments as follows:
+        When writing your own ```.save()``` function, you'll need to specify three arguments as follows:
         
         
             >>> def your_function(self, key: str, value: any):
@@ -226,9 +226,9 @@ Description: # CleverDict
         * **key**: a valid Python ```.attribute``` key preferably, otherwise you'll only be able to access it using ```dictionary['key']``` notation later on.
         * **value**: anything
         
-        ## 10. SETTING DIFFERENT AUTO-SAVE FUNCTIONS FOR DIFFERENT OBJECTS
-        If you want to specify different ```.save``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different
-        ```.save``` function for each subclass e.g.:
+        ## 10. HANDY TIPS FOR SUBCLASSING
+        
+        If you want to specify different ```.save()``` behaviours for different objects, consider creating subclasses that inherit from ```CleverDict``` and set a different ```.save()``` function for each subclass e.g.:
         
             >>> class Type1(CleverDict): pass
             >>> Type1.save = my_save_function1
@@ -236,15 +236,45 @@ Description: # CleverDict
             >>> class Type2(CleverDict): pass
             >>> Type2.save = my_save_function2
         
+        When you create a subclass of `CleverDict` remember to call `super().__init__()` *before* trying to set any further class or object attributes, otherwise you'll run into trouble:
+        
+            class Movie(CleverDict):
+                index = []
+                def __init__(self, title, **kwargs):
+                    super().__init__(**kwargs)
+                    self.title = title
+                    Movie.index += [self]
+        
+        In the example above we created a simple class variable `.index` to keep a list of instances for future reference:
+        
+            >>> x = Movie("The Wizard of Oz")
+            >>> print(Movie.index)
+            [Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]
+        
+        
+        You might like to add a custom `__str__()` method to your subclass, for example calling on the `.info(as_str=True)` method:
+        
+            def __str__(self):
+                output = self.info(as_str=True)
+                return output.replace("CleverDict", type(self).__name__, 1)
+        
+        
+        This allows you to print your objects' attributes with ease:
+        
+            >>> x = Movie("The Wizard of Oz")
+            >>> print(x)
+            Movie:
+                self['title'] == self.title == 'The Wizard of Oz"
         
         ## 11. CONTRIBUTING
         
-        We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without causing recursion or requiring a rewrite/overwrite of the original class.
+        We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without requiring a rewrite/overwrite of the original class.
         
-        For example it would be great if we could graft on the CleverDict methods to other Classes, something like this:
+        For example it would be great if we could graft on the CleverDict functionality to other Classes, something like this:
         
-            >>> class MyDatetime(datetime.datetime, CleverDict):
-            ...     pass
+            >>> class MyDatetime(CleverDict,datetime.datetime):
+                    def __init__(self, title, **kwargs):
+                        super().__init__(**kwargs)
         
             >>> mdt = MyDatetime.now()
             >>> mdt.hour
@@ -255,15 +285,15 @@ Description: # CleverDict
         Unfortunately at the moment this raises an error:
         ```TypeError: multiple bases have instance lay-out conflict```
         
-        ... which is beyond the author's current Python level!
+        ... which is beyond the author's current Python level to solve!
         
         
         ## 12. CREDITS
         ```CleverDict``` was developed jointly by Ruud van der Ham, Peter Fison, Loic Domaigne, and Rik Huygen who met on the friendly and excellent Pythonista Cafe forum (www.pythonistacafe.com).  Peter got the ball rolling after noticing a super-convenient, but not fully-fledged feature in Pandas that allows you to (mostly) use ```object.attribute``` syntax or ```dictionary['key']``` syntax interchangeably. Ruud, Loic and Rik then started swapping ideas for a hybrid  dictionary/data class, originally based on ```UserDict``` and the magic of ```__getattr__``` and ```__setattr__```.
         
-        >(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a smile as you think about the Clever Dicks who created it ;)
+        >(\*) ```CleverDict``` was originally called ```attr_dict``` but several confusing flavours of this and ```AttrDict``` exist on PyPi and Github already.  Hopefully this new tongue-in-cheek name is more memorable and raises a smile as future users imagine the Clever Dicks who created it ;)
         
-Keywords: data,attribute,key,value,attributes,keys,values,database,utility,tool,clever,dictionary,att,__getattr__,__setattr__,getattr,setattr
+Keywords: cleverdict,data,attribute,key,value,attributes,keys,values,database,utility,tool,clever,dictionary,att,__getattr__,__setattr__,getattr,setattr
 Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Developers
