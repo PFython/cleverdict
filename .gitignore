@@ -2,3 +2,4 @@
 *.pyo
 __pycache__
 example.log
+settings.json

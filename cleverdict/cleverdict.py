@@ -2,11 +2,16 @@ import inspect
 import keyword
 import itertools
 
-__version__ = "1.7.2"
+__version__ = "1.7.3"
 
 """
 Change log
 ==========
+
+version 1.7.2 2020-12-05
+------------------------
+Auto-delete feature implemented:
+https://github.com/PFython/cleverdict/issues/11
 
 version 1.7.2 2020-11-03
 --------------------------
