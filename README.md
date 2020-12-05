@@ -20,7 +20,7 @@ No dependencies.  Very lightweight:
 
 or to cover all bases...
 
-    python -m pip install cleverdict --upgrade --user
+    python -m pip install cleverdict --upgrade
 
 
 
