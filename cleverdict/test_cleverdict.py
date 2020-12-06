@@ -2,7 +2,7 @@ from cleverdict import CleverDict, Expand, all_aliases, __version__
 import pytest
 import os
 from collections import UserDict
-from textwrap import dedent
+# from textwrap import dedent
 import json
 
 
@@ -456,12 +456,7 @@ class Test_Save_Functionality:
         CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         with open("example.log", "r") as file:
             log = file.read()
-        assert log == dedent(
-            """\
-Notional save to database: .total = 6 <class 'int'>
-Notional save to database: .usergroup = Knights of Ni <class 'str'>
-"""
-        )
+        assert log ==   """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         self.delete_log()
         CleverDict.save = dummy_save_function
 
@@ -505,6 +500,22 @@ Notional save to database: .usergroup = Knights of Ni <class 'str'>
             pass
         assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
 
-
 if __name__ == "__main__":
     pytest.main(["-vv", "-s"])
+
+def example_delete_function (self, key):
+    print(f"Notionally deleting '{key}''")
+
+class Test_Delete_Functionality:
+    def delete_log(self):
+        try:
+            os.remove("example.log")
+        except FileNotFoundError:
+            pass
+
+    def test_auto_delete(self):
+        """ Once set, CleverDict.save should be called on creation """
+        CleverDict.delete = example_delete_function
+        self.delete_log()
+        CleverDict({"total": 6, "usergroup": "Knights of Ni"})
+        CleverDict.save = dummy_save_function

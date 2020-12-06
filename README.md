@@ -54,6 +54,24 @@ The values are then immediately available using either dictionary or .attribute 
     >>> x.life
     # KeyError: 'life'
 
+And if you need JSON, you can convert easily with `.to_json()` but all your values must
+capable of being serialised to JSON obviously e.g. no Python sets or custom objects:
+
+    >>> x.to_json()
+    '{"total": 6, "usergroup": "Knights of Ni"}'
+
+    >>> x.to_json(file="test.txt")
+    Saved 'x' in JSON format to:
+    D:\Pete's Data\OneDrive\Python Scripts\cleverdict\test.txt
+    '{"total": 6, "usergroup": "Knights of Ni"}'
+
+You can also use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object e.g. for Client/Server serialisation:
+
+    >>> x = CleverDict({1: "one", 2: "two"})
+
+    >>> x.tolist()
+    [(1, 'one'), (2, 'two')]
+
 
 ## 4. OTHER WAYS TO GET STARTED
 You can also create a ```CleverDict``` instance using keyword arguments like this:
@@ -78,15 +96,14 @@ Or using a list of tuple/list pairs:
 
 This can be helpful for serialisation issues like ```json.dumps()``` converting numeric dictionary keys to strings, and for use with Client/Server apps where there are limits on what data types can be passed between the Client and Server (*).
 
-
-Or using the ```.fromkeys()``` method like this:
+You can also use the ```.fromkeys()``` method like this:
 
     >>> x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
 
     >>> x
     CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})
 
-Or by using ```vars()``` to import another object's data (but not its methods):
+Or use ```vars()``` to import another object's data (but not its methods):
 
     >>> class X: pass
     >>> a = X(); a.name = "Percival"
@@ -95,16 +112,16 @@ Or by using ```vars()``` to import another object's data (but not its methods):
     >>> x
     CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
 
-
-(*) You can also use the ```.tolist()``` method to generate a list of key/value pairs from a ```CleverDict``` object e.g. for Client/Server serialisation:
-
-    >>> x = CleverDict({1: "one", 2: "two"})
-
-    >>> x.tolist()
-    [(1, 'one'), (2, 'two')]
+Or create a new `CleverDict` based on an existing one:
 
 
+    >>> y = CleverDict(x)
 
+    >>> y
+    CleverDict({'total': 6, 'usergroup': 'Knights of Ni'}, _aliases={}, _vars={})
+
+    >>> y is x
+    False
 
 ## 5. ATTRIBUTE NAMES AND ALIASES
 
@@ -184,29 +201,59 @@ Here's one way you could create a ```.store``` attribute and customise the auto-
             self.store.append((name, value))
 
 ## 8. THE AUTO-SAVE FEATURE
-You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed, for example to save you remembering to update a database, save to a file, or synchronise with cloud storage etc.  There's an example function in ```cleverict.test_cleverdict``` which demonstrates how you just need to overwrite the ```.save()``` method with your own:
+You can set pretty much any function to run automatically whenever a ```CleverDict``` value is created or changed, for example to save you remembering to update a database, save to a file, or synchronise with cloud storage etc.  You just need to overwrite the ```CleverDict.save``` method with your own:
 
-    >>> from cleverdict.test_cleverdict import example_save_function
-    >>> CleverDict.save = example_save_function
+    >>> CleverDict.save = your_save_function
 
-    >>> x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
-    Notional save to database: .total = 6 <class 'int'>
-    Notional save to database: .usergroup = Knights of Ni <class 'str'>
+Similarly the `CleverDict.delete` method is called automatically whenever an attribute or value is deleted.  Like `.save`, it does nothing by default, but you can overwrite it with your own function e.g. for popping up a confirmation request or notification, creating a backup, or deleting a record from your database, config file, cloud storage etc.
 
-    >>> x.life = 42
-    Notional save to database: .life = 42 <class 'int'>
+    >>> CleverDict.delete = your_delete_function
+
+Following the "batteries included" philosophy, we've included a powerful example of this feature for the oh-so-common scenario of wanting to dynamically Create, Remove, Update or Delete a JSON formatted config file as the values of your `CleverDict` change:
+
+    >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+
+    >>> x.autosave("json")
+    Created a new config file:     C:\Users\Peter\AppData\Roaming\CleverDict\2020-12-06-04-35-58-36[x].json
+
+    >>> x.Prognosis = "Not good"
+    .Prognosis updated in C:\Users\Peter\AppData\Roaming\CleverDict\2020-12-06-04-35-58-36[x].json
+
+    >>> x.to_json()
+    '{"Patient Name": "Wobbly Joe",
+      "Test Result": "Positive",
+      "Prognosis": "Not good"}'
+
+You'll notice `CleverDict` helpfully created a default JSON file that:
+
+- Includes a timestamp, hopefully making it unique (enough) for most uses
+- Includes one of the aliases given to your `CleverDict` object
+- Was saved to the recommended Settings folder for your particular Operating System (thanks to the `click` package which is a dependency)
+
+The JSON file path is cunningly stored in memory as `.json_path` and if you want to customise things further, you also have direct access to the following methods which use it as a default location:
+
+```
+    >>> x.get_default_settings_path()
+    >>> x.create_json_file()
+    >>> x = {'totalload_from_json_file(path = None)
+    >>> x.save_value_to_json_file(key = None, value = None)
+    >>> x.delete_value_from_json_file(key)
+    >>> x.delete_json()
+```
 
 
-The example function above also appends output to a file, which you might want for debugging, auditing,  further analysis etc.:
+If you ever want to restore the default "no action" behaviour of `.save` or `.delete` you can do so as follows:
 
-    >>> with open("example.log","r") as file:
-    ...     log = file.read()
+    >>> CleverDict.save = CleverDict.original_save
+    >>> CleverDict.delete = CleverDict.original_delete
 
-    >>> log.splitlines()
-    ["Notional save to database: .total = 6 <class 'int'>",
-    "Notional save to database: .usergroup = Knights of Ni <class 'str'>"]
+Or make use of the `.autosave` method:
 
-**NB**: The ```.save()``` method is a *class* method, so changing ```CleverDict.save()``` will apply the new ```.save()``` method to all previously created ```CleverDict``` objects as well as future ones.
+    >>> x.autosave("off")
+
+
+
+**NB**: The ```.save``` and `.delete` methods are *class* methods, so changing ```CleverDict.save``` will apply the new ```.save``` method to all previously created ```CleverDict``` objects as well as future ones.
 
 
 ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
@@ -263,24 +310,11 @@ This allows you to print your objects' attributes with ease:
 
 ## 11. CONTRIBUTING
 
-We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes simply using inheritance, without requiring a rewrite/overwrite of the original class.
+We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help evolve ```CleverDict``` to make it play nicely with other classes and formats.
 
-For example it would be great if we could graft on the CleverDict functionality to other Classes, something like this:
+For a list of all outstanding **Feature Requests** and (heavens forbid!) actual *Issues* please have a look here and maybe you can help out?
 
-    >>> class MyDatetime(CleverDict,datetime.datetime):
-            def __init__(self, title, **kwargs):
-                super().__init__(**kwargs)
-
-    >>> mdt = MyDatetime.now()
-    >>> mdt.hour
-    4
-    >>> mdt['hour']
-    4
-
-Unfortunately at the moment this raises an error:
-```TypeError: multiple bases have instance lay-out conflict```
-
-... which is beyond the author's current Python level to solve!
+https://github.com/PFython/cleverdict/issues?q=is%3Aopen+is%3Aissue
 
 
 ## 12. CREDITS
