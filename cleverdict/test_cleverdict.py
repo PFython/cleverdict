@@ -5,25 +5,6 @@ from collections import UserDict
 # from textwrap import dedent
 import json
 
-
-def example_save_function(self, key, value):
-    """
-    Example of a custom function which can be called by self._save()
-    whenever the value of a CleverDict instance is created or changed.
-    Required arguments are: self, name: any and value: any
-    Specify this (or any other) function as the default 'save' function as follows:
-    CleverDict.save = example_save_function
-    """
-    output = f"Notional save to database: .{key} = {value} {type(value)}"
-    with open("example.log", "a") as file:
-        file.write(output + "\n")
-    print(output)
-
-
-def dummy_save_function(self, *args, **kwargs):
-    pass
-
-
 class Test_Initialisation:
     def test_creation_using_existing_dict(self):
         """ CleverDicts can be creates from existing dictionaries """
@@ -441,6 +422,21 @@ class Test_Internal_Logic:
     def test_version(self):
         assert isinstance(__version__, str)
 
+def example_save_function(self, key, value):
+    """
+    Example of a custom function which can be called by self._save()
+    whenever the value of a CleverDict instance is created or changed.
+    Required arguments are: self, name: any and value: any
+    Specify this (or any other) function as the default 'save' function as follows:
+    CleverDict.save = example_save_function
+    """
+    output = f"Notional save to database: .{key} = {value} {type(value)}"
+    with open("example.log", "a") as file:
+        file.write(output + "\n")
+    print(output)
+
+def dummy_save_function(self, *args, **kwargs):
+    pass
 
 class Test_Save_Functionality:
     def delete_log(self):

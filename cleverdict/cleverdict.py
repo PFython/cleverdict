@@ -30,7 +30,7 @@ Updated setup.py to correct support for Python 3.6+
 
 version 1.7.0 2020-11-01
 --------------------------
-Added methods .fromlist and .tolist
+Added methods .fromlist and .to_list
 Updated test_cleverdict.py
 Updated README
 Updated setup.py to show support for Python 3.2+
@@ -286,7 +286,7 @@ class CleverDict(dict):
         """
         return CleverDict({k: value for k in iterable})
 
-    def tolist(self):
+    def to_list(self):
         """
         Creates a (json-serialisable) list of k,v pairs as a list of tuples.
         Main use case is Client/Server apps where returning a CleverDict object
@@ -655,5 +655,3 @@ def all_aliases(name):
 
 if __name__ == "__main__":
     pass
-
-# TODO: Null entries create with autosave
