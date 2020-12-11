@@ -54,7 +54,7 @@ The values are then immediately available using either dictionary or .attribute 
     >>> x.life
     # KeyError: 'life'
 
-And if you need JSON, you can convert easily with `.to_json()` but all your values must
+If you need JSON, you can convert easily with `.to_json()` but all your values must
 capable of being serialised to JSON obviously, so no Python sets or custom objects unless you convert them to something that JSON *can* handle first:
 
     >>> x.to_json()
@@ -241,8 +241,6 @@ The JSON file path is cunningly stored using `.setattr_direct` (see above) as `.
     >>> x.delete_value_from_json_file(key)
     >>> x.delete_json()
 
-
-
 If you ever need to restore the default "no action" behaviour of `.save` or `.delete` you can do so as follows:
 
     >>> CleverDict.save = CleverDict.original_save
@@ -252,22 +250,24 @@ Or make use of the `.autosave` helper function:
 
     >>> x.autosave("off")
 
-
-
 **NB**: The `.save` and `.delete` methods are *class* methods, so changing `CleverDict.save` will apply the new `.save` method to ***all*** previously created `CleverDict` objects as well as future ones.
 
 
 ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
-When writing your own `.save` function, you'll need to specify three arguments as follows:
+When writing your own `save` function, you'll need to specify three arguments as follows:
 
-
-    >>> def your_function(self, key: str, value: any):
-    ...     print("Ni!")
-
+    >>> def save(self, name, value):
+    ...     print(f" ⓘ  .{name} set to: {value}")
 
 * **self**: because we're dealing with objects and classes...
 * **key**: a valid Python `.attribute` key preferably, otherwise you'll only be able to access it using `dictionary['key']` notation later on.
 * **value**: anything
+
+
+You can then overwrite the original `CleverDict.save` method as follows:
+
+    >>> setattr(CleverDict, "save", save)
+
 
 ## 10. HANDY TIPS FOR SUBCLASSING
 
