@@ -27,7 +27,7 @@ or to cover all bases...
 
 ## 3. BASIC USE
 
-`CleverDict` objects behave like normal Python dictionaries, but with the convenience of immediately offering read and write access to their data (keys and values) using the `object.attribute` syntax, which many people find easier to type and more intuitive to read and understand.
+`CleverDict` objects behave like normal Python dictionaries, but with the convenience of immediately offering read and write access to their data (keys and values) using the `object.attribute` syntax (\*), which many people find easier to type and more intuitive to read and understand.
 
 You can create a `CleverDict` object in exactly the same way as a regular Python dictionary:
 
@@ -53,6 +53,19 @@ The values are then immediately available using either dictionary or .attribute 
     >>> del x['life']
     >>> x.life
     # KeyError: 'life'
+
+(\*) `CleverDict` objects can always be relied on to behave like dictionaries, but if you accidentally use any of its built-in method names as keys then as you'd expect and hope, it won't overwrite those methods, and its value won't be accessible using .attribute notation:
+
+    >>> 'to_list' in dir(CleverDict)
+    True
+
+    >>> x = CleverDict({'to_list': "Some information"})
+
+    >>> x['to_list']
+    'Some information'
+
+    >>> x.to_list
+    <bound method CleverDict.to_list of CleverDict({'to_list': 'Some information'}, _aliases={}, _vars={})>
 
 If you need JSON, you can convert easily with `.to_json()` but all your values must
 capable of being serialised to JSON obviously, so no Python sets or custom objects unless you convert them to something that JSON *can* handle first:
@@ -173,6 +186,13 @@ You'll be relieved to know `CleverDict` handles these cases but we thought it wa
 
     "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
 
+You'll notice in the exaple above that `.info()` lists all the names assigned to the current instance rather than just referring to `self`.  If you want to get these names programmatically you can use the handy `.identify_self()` method:
+
+    >>> a_more_meaningful_name = x
+
+    >>> x.identify_self()
+    ['a_more_meaningful_name', 'x', 'y', 'z']
+
 Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?  `CleverDict` handles this and replaces all remaining *invalid* characters such as punctuation marks with "`_`" on a first come, first served basis.  To avoid duplicates or over-writing, a `KeyError` is raised if required, which is your prompt to rename the offending dictionary keys!  For example:
 
     >>> x = CleverDict({"one-two": "hypen",
@@ -202,7 +222,7 @@ Here's one way you could sbuclass `CleverDict` to create a `.store` attribute an
             self.store.append((name, value))
 
 ## 8. THE AUTO-SAVE FEATURE
-You can set pretty much any function to be run automatically when a `CleverDict` value is *created or changed*, for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...  You just need to overwrite the `CleverDict.save` method with your own one:
+You can set pretty much any function to be run automatically when a `CleverDict` value is *created or changed* for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...  You just need to overwrite the `CleverDict.save` method with your own one:
 
     >>> CleverDict.save = your_save_function
 
@@ -257,7 +277,7 @@ Or make use of the `.autosave` helper function:
 When writing your own `save` function, you'll need to specify three arguments as follows:
 
     >>> def save(self, name, value):
-    ...     print(f" ⓘ  .{name} set to: {value}")
+            print(f" ⓘ  {name} set to: {value} (Class: {self.__class__.__name__})")
 
 * **self**: because we're dealing with objects and classes...
 * **key**: a valid Python `.attribute` key preferably, otherwise you'll only be able to access it using `dictionary['key']` notation later on.

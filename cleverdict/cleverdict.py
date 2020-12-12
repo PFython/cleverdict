@@ -580,6 +580,11 @@ class CleverDict(dict):
                 if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
+    def identify_self(self):
+        """ Identifies names and aliases of current CleverDict instance """
+        frame = inspect.currentframe().f_back.f_locals
+        return sorted(k for k, v in frame.items() if v is self)
+
     def info(self, as_str=False):
         """
         Prints or returns a string showing variable name equivalence
