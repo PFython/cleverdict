@@ -274,10 +274,10 @@ Or make use of the `.autosave` helper function:
 
 
 ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
-When writing your own `save` function, you'll need to specify three arguments as follows:
+When writing your own `save` function, you'll need to specify three arguments as shown in the following example:
 
     >>> def save(self, name, value):
-            print(f" ⓘ  {name} set to: {value} (Class: {self.__class__.__name__})")
+            print(f" ⓘ  .{name} (object type: {self.__class__.__name__}) = {value} {type(value)}")
 
 * **self**: because we're dealing with objects and classes...
 * **key**: a valid Python `.attribute` key preferably, otherwise you'll only be able to access it using `dictionary['key']` notation later on.
