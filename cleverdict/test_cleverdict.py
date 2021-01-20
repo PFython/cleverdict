@@ -1,4 +1,4 @@
-from cleverdict import CleverDict, Expand, all_aliases, __version__
+from cleverdict import CleverDict, Expand, all_aliases
 import pytest
 import os
 from collections import UserDict
