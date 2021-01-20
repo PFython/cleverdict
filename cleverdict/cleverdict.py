@@ -178,14 +178,15 @@ class CleverDict(dict):
             path = self.get_default_settings_path()
             self.setattr_direct("json_path", Path(path))
         if setting.lower() == "json":
-            CleverDict.save = CleverDict.save_value_to_json_file
-            CleverDict.delete = CleverDict.delete_value_from_json_file
+            CleverDict.save = CleverDict._save_value_to_json_file
+            CleverDict.delete = CleverDict._delete_value_from_json_file
             self.create_json_file()
-            print(f"\n⚠ Autosaving to:\n  {self.json_path}")
+            print(f"\n⚠ Autosaving to:\n  {self.json_path}\n")
+            self.to_json(file=self.json_path)
         if setting.lower() == "off":
             CleverDict.save = CleverDict.original_save
             CleverDict.delete = CleverDict.original_delete
-            print("\n⚠ Autosave disabled.\n")
+            print("\n⚠ Autosave disabled.")
             if hasattr(self, "json_path"):
                 print(f"\nⓘ Previous updates saved to:\n  {self.json_path}\n")
 
@@ -310,29 +311,60 @@ class CleverDict(dict):
         """
         # Get a timestamp
         t = ''.join([x if x.isnumeric() else "-" for x in str(datetime.now())])
-        # Get the most recently assigned object name
-        frame = inspect.currentframe().f_back.f_locals
-        id = [k for k, v in frame.items() if v is self][-1]
-        id = f"{t[:-4]}[{id}].json"
+        id = f"{t[:-4]}.json"
         return Path(click.get_app_dir("CleverDict")) / id
 
-    def load_from_json_file(self, path = None):
+    def to_lines(self, **kwargs):
         """
-        ⚠ CAUTION ⚠
-        Loads the contents of a pre-existing config file as attributes
-        Overwrites the value of any duplicate keys found.
+        Creates a line ("\n") delimited object or file using values for lines
         """
-        if path is None:
-            if hasattr(self, json_path):
-                path = self.json_path
-            else:
-                path = get_default_settings_path()
-                # json_path is NOT set as this object doesn't isn't necessarily
-                # the owner of the config file
-        with open(path, "r") as file:
-            values = json.load(file)
+        file_path = kwargs.get('file')
+        start_at = kwargs.get('start_at') or 0
+        lines = []
+        for index in range(start_at, max(self.keys())+1):
+            lines += [self.get(index) or ""]
+        lines = "\n".join(lines)
+        if not file_path:
+            return lines
+        with open(file_path, "w", encoding='utf-8') as file:
+                file.write(lines)
+
+    @classmethod
+    def from_lines(cls, lines = None, **kwargs):
+        """
+        Creates a new CleverDict object and loads data from a line ('\n')
+        delimited object or file.
+
+        keys: line numbers, starting Pythonically with zero
+        values: line contents (str)
+        """
+        file_path = kwargs.get('file')
+        start_at = kwargs.get('start_at') or 0
+        if file_path:
+            with open(file_path, "r", encoding='utf-8') as file:
+                index = {k+start_at:v for k, v in enumerate(file)}
+                self = cls({k:v.rstrip() for k,v in index})
+        elif lines:
+            index = {k+start_at:v for k, v in enumerate(lines.rstrip().split("\n"))}
+            self = cls(index)
+        return self
+
+    @classmethod
+    def from_json(cls, json_data = None, **kwargs):
+        """
+        Creates a new CleverDict object and loads data from a JSON object or
+        file.
+        """
+        self = cls()
+        file_path = kwargs.get('file')
+        if file_path:
+            with open(file_path, "r", encoding='utf-8') as file:
+                values = json.load(file)
+        elif json_data:
+            values = json.loads(json_data)
         for key, value in values.items():
             setattr(self, key, value)
+        return self
 
     def create_json_file(self):
         """
@@ -345,9 +377,8 @@ class CleverDict(dict):
             print(f"\nⓘ Folder created:\n {self.json_path.parent}")
         except FileExistsError:
             pass
-        with open(self.json_path, "w") as file:
+        with open(self.json_path, "w", encoding='utf-8') as file:
             json.dump({}, file)  # Create skeleton .json file
-        print(f"\nⓘ Created a new config file:\n {self.json_path}")
 
     def to_json(self, never_save = False, **kwargs):
         """
@@ -360,15 +391,19 @@ class CleverDict(dict):
         """
         # .get_aliases finds attributes created after __init__:
         fields_dict = {key: self.get(key) for key in self.get_aliases()}
+        # Repopulate aliases:
+        aliases = [x for x in self._aliases.keys() if x not in self.keys()]
+        for alias in aliases:
+            fields_dict[alias] = self[alias]
         if never_save:
             fields_dict = {k:v for k,v in fields_dict if k not in never_save}
         json_str = json.dumps(fields_dict)
         path = kwargs.get("file")
         if path:
             path = Path(path)
-            with open(path, "w") as file:
+            with open(path, "w", encoding='utf-8') as file:
                 file.write(json_str)
-            if CleverDict.save is not CleverDict.save_value_to_json_file:
+            if CleverDict.save is not CleverDict._save_value_to_json_file:
                 # Avoid spamming confirmation messages
                 frame = inspect.currentframe().f_back.f_locals
                 ids = [k for k, v in frame.items() if v is self]
@@ -376,7 +411,7 @@ class CleverDict(dict):
                 print(f"\nⓘ Saved '{ids}' in JSON format to:\n {path.absolute()}")
         return json_str
 
-    def save_value_to_json_file(self, key = None, value = None):
+    def _save_value_to_json_file(self, key = None, value = None):
         """
         If .autosave("json") is called on an object, this overwrites
         the default .save() method and is called every time a value changes or
@@ -401,7 +436,7 @@ class CleverDict(dict):
             else:
                 location = self.json_path # self["json_path"]
             # Comment out if confirmation not required:
-            print(f"\n✓ .{key} updated in {location}")
+            print(f"\n✓ .{key} updated in:\n  {location}")
         # TODO: Check for common unsupported types and convert to/from strings
 
     def save(self, name, value):
@@ -414,7 +449,7 @@ class CleverDict(dict):
         """
         pass
 
-    def delete_value_from_json_file(self, key):
+    def _delete_value_from_json_file(self, key):
         """
         If .autosave("json") is called on an object, this overwrites
         the default .delete() method and is called every time a value is

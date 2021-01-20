@@ -8,7 +8,7 @@ from setuptools import setup
 HERE = Path(__file__).parent
 NAME = "cleverdict"
 GITHUB_ID = "Pfython"
-VERSION = "1.7.4rc1"
+VERSION = "1.7.4rc2"
 DESCRIPTION = "A data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably."
 LICENSE = "MIT License"
 AUTHOR = "Peter Fison"
