@@ -7,13 +7,11 @@ import click  # used to get cross-platform folder path for config file
 from pathlib import Path
 from datetime import datetime
 
-__version__ = "1.7.3"
-
 """
 Change log
 ==========
 
-version 1.7.3 2020-12-05
+version 1.7.4 2021-01-20
 ------------------------
 Auto-delete feature implemented:
 https://github.com/PFython/cleverdict/issues/11
