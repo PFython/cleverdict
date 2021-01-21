@@ -1,9 +1,20 @@
+"""
+Ruud:
+version doesn't exists anymore. Why?
+
+Added tests for new functionality
+
+I have extracted (cloned) get_app_dir from click, so no more dependencies
+
+I haven't looked at the delete functionality (and the tests)
+
+"""
+
 import os
 import json
 import inspect
 import keyword
 import itertools
-import click  # used to get cross-platform folder path for config file
 from pathlib import Path
 from datetime import datetime
 
@@ -172,7 +183,7 @@ class CleverDict(dict):
         CleverDict.original_save = self.save  # create a copy
         CleverDict.original_delete = self.delete  # create a copy
 
-    def autosave(self, setting, path = None):
+    def autosave(self, setting, path=None):
         """ Toggles autosave to a JSON config file ON (True) / OFF (False) """
         if path is None and not hasattr(self, "json_path"):
             path = self.get_default_settings_path()
@@ -181,14 +192,18 @@ class CleverDict(dict):
             CleverDict.save = CleverDict._save_value_to_json_file
             CleverDict.delete = CleverDict._delete_value_from_json_file
             self.create_json_file()
-            print(f"\n⚠ Autosaving to:\n  {self.json_path}\n")
+                # Ruud: I think you shouldn't print anything from CleverDict
+
+#            print(f"\n⚠ Autosaving to:\n  {self.json_path}\n")
             self.to_json(file=self.json_path)
         if setting.lower() == "off":
             CleverDict.save = CleverDict.original_save
             CleverDict.delete = CleverDict.original_delete
-            print("\n⚠ Autosave disabled.")
-            if hasattr(self, "json_path"):
-                print(f"\nⓘ Previous updates saved to:\n  {self.json_path}\n")
+                # Ruud: I think you shouldn't print anything from CleverDict
+
+#            print("\n⚠ Autosave disabled.")
+#            if hasattr(self, "json_path"):
+#                print(f"\nⓘ Previous updates saved to:\n  {self.json_path}\n")
 
     def __setattr__(self, name, value):
         if name in self._aliases:
@@ -302,7 +317,8 @@ class CleverDict(dict):
         """
         return list(self.items())
 
-    def get_default_settings_path(self):
+    @classmethod
+    def get_default_settings_path(cls):
         """
         Get Operating System specific default for settings folder;
         Return a (hopefully) unique filename comprising time and variable name
@@ -310,27 +326,24 @@ class CleverDict(dict):
         e.g. 2020-12-06-03-30-57-89[x].json
         """
         # Get a timestamp
-        t = ''.join([x if x.isnumeric() else "-" for x in str(datetime.now())])
+        t = "".join([x if x.isnumeric() else "-" for x in str(datetime.now())])
         id = f"{t[:-4]}.json"
-        return Path(click.get_app_dir("CleverDict")) / id
+        return Path(get_app_dir("CleverDict")) / id
 
-    def to_lines(self, **kwargs):
+# Ruud: updated. No more *kwargs, etc.
+    def to_lines(self, file_path=None, start_at=0):
         """
         Creates a line ("\n") delimited object or file using values for lines
         """
-        file_path = kwargs.get('file')
-        start_at = kwargs.get('start_at') or 0
-        lines = []
-        for index in range(start_at, max(self.keys())+1):
-            lines += [self.get(index) or ""]
-        lines = "\n".join(lines)
+        lines = "\n".join(itertools.islice(self.values(), start_at, None))
         if not file_path:
             return lines
-        with open(file_path, "w", encoding='utf-8') as file:
-                file.write(lines)
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(lines)
 
     @classmethod
-    def from_lines(cls, lines = None, **kwargs):
+# Ruud: updated. No more *kwargs, etc.
+    def from_lines(cls, lines=None, file_path=None, start_at=0):
         """
         Creates a new CleverDict object and loads data from a line ('\n')
         delimited object or file.
@@ -338,33 +351,34 @@ class CleverDict(dict):
         keys: line numbers, starting Pythonically with zero
         values: line contents (str)
         """
-        file_path = kwargs.get('file')
-        start_at = kwargs.get('start_at') or 0
+        if lines and file_path:
+            raise ValueError("both lines and file_path specified")
+        if not (lines or file_path):
+            raise ValueError("neither lines nor file_path specified")
         if file_path:
-            with open(file_path, "r", encoding='utf-8') as file:
-                index = {k+start_at:v for k, v in enumerate(file)}
-                self = cls({k:v.rstrip() for k,v in index})
-        elif lines:
-            index = {k+start_at:v for k, v in enumerate(lines.rstrip().split("\n"))}
-            self = cls(index)
-        return self
+            with open(file_path, "r", encoding="utf-8") as file:
+                lines = file.read()
+        index = {k + start_at: v.strip() for k, v in enumerate(lines.split("\n"))}
+        return cls(index)
 
     @classmethod
-    def from_json(cls, json_data = None, **kwargs):
+# Ruud: updated. No more *kwargs, etc.
+    def from_json(cls, json_data=None, file_path=None):
         """
         Creates a new CleverDict object and loads data from a JSON object or
         file.
         """
-        self = cls()
-        file_path = kwargs.get('file')
+        if json_data and file_path:
+            raise ValueError("both json_data and file_path specified")
+        if not (json_data or file_path):
+            raise ValueError("neither json_data nor file_path specified")
+
         if file_path:
-            with open(file_path, "r", encoding='utf-8') as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 values = json.load(file)
-        elif json_data:
+        else:
             values = json.loads(json_data)
-        for key, value in values.items():
-            setattr(self, key, value)
-        return self
+        return cls(values)
 
     def create_json_file(self):
         """
@@ -374,44 +388,42 @@ class CleverDict(dict):
         """
         try:
             os.makedirs(self.json_path.parent)
-            print(f"\nⓘ Folder created:\n {self.json_path.parent}")
+                # Ruud: I think you shouldn't print anything from CleverDict
+#            print(f"\nⓘ Folder created:\n {self.json_path.parent}")
         except FileExistsError:
             pass
-        with open(self.json_path, "w", encoding='utf-8') as file:
+        with open(self.json_path, "w", encoding="utf-8") as file:
             json.dump({}, file)  # Create skeleton .json file
 
-    def to_json(self, never_save = False, **kwargs):
+    def to_json(self, never_save=None, file_path=None):
+# Ruud: updated. No more *kwargs, neversave copied from the class never_save if not specified, etc.
         """
         Return CleverDict serialised to JSON.
 
-        KWARGS
+        If never_save is not specified, the class never_save is used
+
         never_save: Exclude field in CleverDict.never_save if True eg passwords
         file: Save to file if True or filepath
 
         """
-        # .get_aliases finds attributes created after __init__:
-        fields_dict = {key: self.get(key) for key in self.get_aliases()}
-        # Repopulate aliases:
-        aliases = [x for x in self._aliases.keys() if x not in self.keys()]
-        for alias in aliases:
-            fields_dict[alias] = self[alias]
-        if never_save:
-            fields_dict = {k:v for k,v in fields_dict if k not in never_save}
+        if never_save is None:
+            never_save = self.never_save
+        fields_dict = {alias: self[alias] for alias, key in self._aliases.items() if key not in never_save}
         json_str = json.dumps(fields_dict)
-        path = kwargs.get("file")
-        if path:
-            path = Path(path)
-            with open(path, "w", encoding='utf-8') as file:
+        if file_path:
+            with open(Path(file_path), "w", encoding="utf-8") as file:
                 file.write(json_str)
-            if CleverDict.save is not CleverDict._save_value_to_json_file:
-                # Avoid spamming confirmation messages
-                frame = inspect.currentframe().f_back.f_locals
-                ids = [k for k, v in frame.items() if v is self]
-                ids = ids[0] if len(ids) == 1 else "/".join(ids)
-                print(f"\nⓘ Saved '{ids}' in JSON format to:\n {path.absolute()}")
-        return json_str
+                # Ruud: I think you shouldn't print anything from CleverDict
+        #            if CleverDict.save is not CleverDict._save_value_to_json_file:
+        #                # Avoid spamming confirmation messages
+        #                frame = inspect.currentframe().f_back.f_locals
+        #                ids = [k for k, v in frame.items() if v is self]
+        #                ids = ids[0] if len(ids) == 1 else "/".join(ids)
+        #                print(f"\nⓘ Saved '{ids}' in JSON format to:\n {Path(file_path).absolute()}")
+        else:
+            return json_str
 
-    def _save_value_to_json_file(self, key = None, value = None):
+    def _save_value_to_json_file(self, key=None, value=None):
         """
         If .autosave("json") is called on an object, this overwrites
         the default .save() method and is called every time a value changes or
@@ -434,9 +446,10 @@ class CleverDict(dict):
             if key in CleverDict.never_save:
                 location = "memory but NOT saved to file"
             else:
-                location = self.json_path # self["json_path"]
+                location = self.json_path  # self["json_path"]
             # Comment out if confirmation not required:
-            print(f"\n✓ .{key} updated in:\n  {location}")
+                # Ruud: I think you shouldn't print anything from CleverDict
+#            print(f"\n✓ .{key} updated in:\n  {location}")
         # TODO: Check for common unsupported types and convert to/from strings
 
     def save(self, name, value):
@@ -464,9 +477,10 @@ class CleverDict(dict):
         if key in CleverDict.never_save:
             location = "memory and was never saved to file"
         else:
-            location = self.json_path # self["json_path"]
+            location = self.json_path  # self["json_path"]
         # Comment out if confirmation not required:
-        print(f"\n✓ .{key} deleted from {location}")
+                # Ruud: I think you shouldn't print anything from CleverDict
+#        print(f"\n✓ .{key} deleted from {location}")
 
     def delete(self, name):
         """
@@ -652,6 +666,7 @@ class CleverDict(dict):
         else:
             print(output)
 
+
 def all_aliases(name):
     """
     Returns all possible aliases for a given name.
@@ -691,5 +706,46 @@ def all_aliases(name):
                 result.append(norm_name)
     return result
 
+
+def get_app_dir(app_name, roaming=True, force_posix=False):
+    """
+    this is a self contained copy of click.get_app_dir
+    """
+    import sys
+
+    CYGWIN = sys.platform.startswith("cygwin")
+    MSYS2 = sys.platform.startswith("win") and ("GCC" in sys.version)
+    # Determine local App Engine environment, per Google's own suggestion
+    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get("SERVER_SOFTWARE", "")
+    WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
+
+    def _posixify(name):
+        return "-".join(name.split()).lower()
+
+    if WIN:
+        key = "APPDATA" if roaming else "LOCALAPPDATA"
+        folder = os.environ.get(key)
+        if folder is None:
+            folder = os.path.expanduser("~")
+        return os.path.join(folder, app_name)
+    if force_posix:
+        return os.path.join(os.path.expanduser("~/.{}".format(_posixify(app_name))))
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~/Library/Application Support"), app_name)
+    return os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), _posixify(app_name))
+
+
 if __name__ == "__main__":
-    pass
+    global d
+    d = CleverDict()
+    d["zero"] = "nul"
+    d["one"] = "een"
+    d["two"] = "twee"
+    d["three"] = "drie"
+    d["four"] = "vier"
+    d["five"] = "vijf"
+    d["six"] = "zes"
+    d["7"] = "zeven"
+    d["password"] = "password"
+    j = d.to_json()
+    print(j)

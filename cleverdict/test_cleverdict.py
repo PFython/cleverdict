@@ -1,9 +1,12 @@
 from cleverdict import CleverDict, Expand, all_aliases
+import cleverdict
 import pytest
 import os
 from collections import UserDict
-# from textwrap import dedent
+from textwrap import dedent
 import json
+from pathlib import Path
+
 
 class Test_Initialisation:
     def test_creation_using_existing_dict(self):
@@ -57,6 +60,7 @@ class Test_Initialisation:
         assert x._2 == "two"
         assert x._3 == "three"
 
+
 class Test_Core_Features:
     def test_tolist(self):
         """
@@ -64,7 +68,7 @@ class Test_Core_Features:
         with numeric keys (which isn't supported in json.dumps/.loads)
         """
         x = CleverDict({1: "one", 2: "two"})
-        assert x.tolist() == [(1, 'one'), (2, 'two')]
+        assert x.to_list() == [(1, "one"), (2, "two")]
 
     def test_use_as_dict(self):
         d = dict.fromkeys((0, 1, 23, "what?", "a"), "test")
@@ -190,6 +194,162 @@ CleverDict:
         assert c.info(as_str=True) == "CleverDict:\n    z['a'] == z.a == 'A'"
         del z
         assert c.info(as_str=True) == "CleverDict:\n    x['a'] == x.a == 'A'"
+
+
+class Test_Misc:
+    def test_to_lines(self, tmpdir):
+        d = CleverDict()
+        d["zero"] = "nul"
+        d["one"] = "een"
+        d["two"] = "twee"
+        d["three"] = "drie"
+        d["four"] = "vier"
+        d["five"] = "vijf"
+        d["six"] = "zes"
+        d["7"] = "zeven"
+        assert d.to_lines() == "nul\neen\ntwee\ndrie\nvier\nvijf\nzes\nzeven"
+        assert d.to_lines(start_at=4) == "vier\nvijf\nzes\nzeven"
+        assert d.to_lines(start_at=10) == ""
+        file_path = Path(tmpdir) / "tmp.txt"
+        d.to_lines(file_path=file_path)
+        with open(file_path, "r") as f:
+            assert f.read() == d.to_lines()
+
+    def test_to_json(self, tmpdir):
+        d = CleverDict()
+        d["zero"] = "nul"
+        d["one"] = "een"
+        d["two"] = "twee"
+        d["three"] = "drie"
+        d["four"] = "vier"
+        d["five"] = "vijf"
+        d["six"] = "zes"
+        d[7] = "zeven"
+        assert (
+            d.to_json()
+            == '{"zero": "nul", "one": "een", "two": "twee", "three": "drie", "four": "vier", "five": "vijf", "six": "zes", "7": "zeven", "_7": "zeven"}'
+        )
+        assert (
+            d.to_json(never_save=["one"])
+            == '{"zero": "nul", "two": "twee", "three": "drie", "four": "vier", "five": "vijf", "six": "zes", "7": "zeven", "_7": "zeven"}'
+        )
+        assert (
+            d.to_json(never_save=["one", 7])
+            == '{"zero": "nul", "two": "twee", "three": "drie", "four": "vier", "five": "vijf", "six": "zes"}'
+        )
+
+    def test_from_lines(self, tmpdir):
+        d0=CleverDict()
+        d0[0]="nul"
+        d0[1] = "een"
+        d0[2] = "twee"
+        d0[3] = "drie"
+        d0[4] = "vier"
+        d0[5] = "vijf"
+        d0[6] = "zes"
+        d0[7] = "zeven"
+        d10 = CleverDict({i: v for i, v in enumerate(d0.values(), start=10)})
+        lines = d0.to_lines()
+        assert d0 == CleverDict.from_lines(lines)
+        assert d10 == CleverDict.from_lines(lines, start_at=10)
+
+        file_path = Path(tmpdir) / "tmp.txt"
+        d0.to_lines(file_path=file_path)
+        d = CleverDict.from_lines(file_path=file_path)
+        assert d == d0
+        d = CleverDict.from_lines(file_path=file_path, start_at=10)
+        assert d == d10
+        
+    def test_from_lines(self, tmpdir):
+        d0=CleverDict()
+        d0[0]="nul"
+        d0[1] = "een"
+        d0[2] = "twee"
+        d0[3] = "drie"
+        d0[4] = "vier"
+        d0[5] = "vijf"
+        d0[6] = "zes"
+        d0[7] = "zeven"
+        d10 = CleverDict({i: v for i, v in enumerate(d0.values(), start=10)})
+        lines = d0.to_lines()
+        assert d0 == CleverDict.from_lines(lines)
+        assert d10 == CleverDict.from_lines(lines, start_at=10)
+
+        file_path = Path(tmpdir) / "tmp.txt"
+        d0.to_lines(file_path=file_path)
+        d = CleverDict.from_lines(file_path=file_path)
+        assert d == d0
+        d = CleverDict.from_lines(file_path=file_path, start_at=10)
+        assert d == d10
+
+        with pytest.raises(ValueError):
+            CleverDict.from_lines()
+
+        with pytest.raises(ValueError):
+            CleverDict.from_lines(lines=lines, file_path=file_path)
+
+
+    def test_from_json(self, tmpdir):
+        d = CleverDict()
+        d["zero"] = "nul"
+        d["one"] = "een"
+        d["two"] = "twee"
+        d["three"] = "drie"
+        d["four"] = "vier"
+        d["five"] = "vijf"
+        d["six"] = "zes"
+        d["7"] = "zeven"
+        json_data = d.to_json()
+        result = CleverDict.from_json(json_data)
+        assert result == d        
+
+        file_path = Path(tmpdir) / "tmp.txt"
+        d.to_json(file_path=file_path)
+        result = CleverDict.from_json(file_path=file_path)
+        assert d == result
+
+        with pytest.raises(ValueError):
+            CleverDict.from_json()
+
+        with pytest.raises(ValueError):
+            CleverDict.from_json(json_data=json_data, file_path=file_path)
+
+    def test_get_default_settings_path(self):
+        path = CleverDict.get_default_settings_path()
+        dir = path.parent
+        cleanup = False
+        if not dir.is_dir():  # if the CleverDict folder is not present, cleanup properly
+            dir.mkdir(parents=True)
+            cleanup = True
+
+        info = "test"
+        with open(path, "w") as file:
+            file.write(info)
+        with open(path, "r") as file:
+            read_info = file.read()
+        path.unlink()
+        isfile = path.is_file() 
+        if cleanup: # has to be done before the asserts, to be able to cleanup properly
+            dir.rmdir()
+
+        assert not isfile
+        assert read_info == info
+        assert CleverDict.get_default_settings_path() != path  # when called a second time, should be different
+
+
+    def test_get_app_dir(self):
+        """
+        tests whether the cleverdict implementation of get_app_dir is ok (can only be tested if click is installed)
+        """
+
+        try:
+            import click
+        except ModuleNotFoundError:
+            pytest.skip("could not import click")
+
+        assert click.get_app_dir('x') == cleverdict.get_app_dir('x')
+        
+
 
 
 class Test_Internal_Logic:
@@ -419,8 +579,10 @@ class Test_Internal_Logic:
             x.get_key("a")
         assert x.get_aliases() == []
 
-    def test_version(self):
-        assert isinstance(__version__, str)
+
+#    def test_version(self):
+#        assert isinstance(__version__, str)
+
 
 def example_save_function(self, key, value):
     """
@@ -433,10 +595,12 @@ def example_save_function(self, key, value):
     output = f"Notional save to database: .{key} = {value} {type(value)}"
     with open("example.log", "a") as file:
         file.write(output + "\n")
-    print(output)
+#    print(output)
+
 
 def dummy_save_function(self, *args, **kwargs):
     pass
+
 
 class Test_Save_Functionality:
     def delete_log(self):
@@ -452,7 +616,10 @@ class Test_Save_Functionality:
         CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         with open("example.log", "r") as file:
             log = file.read()
-        assert log ==   """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
+        assert (
+            log
+            == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
+        )
         self.delete_log()
         CleverDict.save = dummy_save_function
 
@@ -496,11 +663,11 @@ class Test_Save_Functionality:
             pass
         assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
 
-if __name__ == "__main__":
-    pytest.main(["-vv", "-s"])
 
-def example_delete_function (self, key):
-    print(f"Notionally deleting '{key}''")
+def example_delete_function(self, key):
+    pass
+#    print(f"Notionally deleting '{key}''")
+
 
 class Test_Delete_Functionality:
     def delete_log(self):
@@ -515,3 +682,8 @@ class Test_Delete_Functionality:
         self.delete_log()
         CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         CleverDict.save = dummy_save_function
+
+
+if __name__ == "__main__":
+    pytest.main(["-vv", "-s"])
+
