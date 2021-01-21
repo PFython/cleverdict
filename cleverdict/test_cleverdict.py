@@ -259,7 +259,7 @@ class Test_Misc:
         assert d == d0
         d = CleverDict.from_lines(file_path=file_path, start_at=10)
         assert d == d10
-        
+
     def test_from_lines(self, tmpdir):
         d0=CleverDict()
         d0[0]="nul"
@@ -301,7 +301,7 @@ class Test_Misc:
         d["7"] = "zeven"
         json_data = d.to_json()
         result = CleverDict.from_json(json_data)
-        assert result == d        
+        assert result == d
 
         file_path = Path(tmpdir) / "tmp.txt"
         d.to_json(file_path=file_path)
@@ -313,6 +313,63 @@ class Test_Misc:
 
         with pytest.raises(ValueError):
             CleverDict.from_json(json_data=json_data, file_path=file_path)
+
+    def test_to_and_from_json_1(self):
+        """ It should be possible to completely reconstruct a CleverDict
+        object, excluding _vars (attributes set directly without updating
+        the dictionary) after .to_json followed by .from_json """
+        d = CleverDict({"one": "een"})
+        d.add_alias("one", "ONE")
+        j = d.to_json()
+        new_d = CleverDict.from_json(j)
+        assert new_d == d
+
+    def test_to_and_from_json_2(self):
+        """ Automatically created aliases should be presevered after .to_json
+        followed by .from_json """
+        d= CleverDict({"#1": 1})
+        j = d.to_json()
+        new_d = CleverDict.from_json(j)
+        assert d._1 is d['#1']
+        assert new_d._1 is new_d['#1']
+        new_d._1 += 1
+        assert new_d._1 == new_d['#1']
+
+    def example_user_code(clever_dict):
+        """ Typical use of CleverDict is aliases to provide interchangeable
+        attributes.  In this case .number and .Number.  Quite subtle and easy
+        to overlook when debugging """
+        clever_dict.number += 1
+        return clever_dict.Number
+
+    def test_to_and_from_json_3(self):
+        """ example_user_code should work equally well after .to_json followed
+        by .from_json """
+        d = CleverDict({"number": 1})
+        d.add_alias("number", "Number")
+        j = d.to_json()
+        new_d = CleverDict.from_json(j)
+        assert d.number == d.Number == new_d.number == new_d.Number
+        assert example_user_code(d) == 2
+        assert example_user_code(new_d) == 2
+
+    def test_to_and_from_json_4(self):
+        """
+        json.dumps converts numeric keys to strings e.g.
+        {1:1} -> {"1":1}
+
+        .to_json should optionally create an alias so that it's possible to reconstruct a CleverDict object after .to_json followed by .from_json
+        """
+        d = CleverDict({1:1})
+        j = d.to_json(numeric_keys=True)
+        # New numeric string alias created by .to_json():
+        assert d["1"] is d[1] is d._1 is d[1] == 1
+        new_d = CleverDict.from_json(j, numeric_keys=True)
+        assert new_d["1"] is new_d[1] is new_d._1 is new_d[1] == 1
+
+
+
+
 
     def test_get_default_settings_path(self):
         path = CleverDict.get_default_settings_path()
@@ -328,7 +385,7 @@ class Test_Misc:
         with open(path, "r") as file:
             read_info = file.read()
         path.unlink()
-        isfile = path.is_file() 
+        isfile = path.is_file()
         if cleanup: # has to be done before the asserts, to be able to cleanup properly
             dir.rmdir()
 
@@ -341,16 +398,11 @@ class Test_Misc:
         """
         tests whether the cleverdict implementation of get_app_dir is ok (can only be tested if click is installed)
         """
-
         try:
             import click
         except ModuleNotFoundError:
             pytest.skip("could not import click")
-
         assert click.get_app_dir('x') == cleverdict.get_app_dir('x')
-        
-
-
 
 class Test_Internal_Logic:
     def test_raises_error(self):
