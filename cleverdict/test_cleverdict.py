@@ -231,61 +231,6 @@ class Test_Misc:
         assert CleverDict.from_json(d.to_json(never_save=["one"])) == eval(d.__repr__(ignore=["one"]))
         assert CleverDict.from_json(d.to_json(never_save=["one", 7])) == eval(d.__repr__(ignore=["one", 7]))
 
-    def test_to_file(self, tmpdir):
-        d = CleverDict()
-        d["zero"] = "nul"
-        d["one"] = "een"
-        d["two"] = "twee"
-        d["three"] = "drie"
-        d["four"] = "vier"
-        d["five"] = "vijf"
-        d["six"] = "zes"
-        d[7] = "zeven"
-        d["password"] = "password"
-        d["pass"] = "wacht"
-        d.add_alias("pass", "PASSWORD")
-        d.add_alias("password", "wachtwoord")
-        d.setattr_direct("direct", "direkt")
-        d.setattr_direct("Password", "Wachtwoord")
-        assert (
-            repr(d)
-            == "CleverDict({'zero': 'nul', 'one': 'een', 'two': 'twee', 'three': 'drie', 'four': 'vier', 'five': 'vijf', 'six': 'zes', 7: 'zeven', 'password': 'password', 'pass': 'wacht'}, _aliases={'_7': 7, '_pass': 'pass', 'PASSWORD': 'pass', 'wachtwoord': 'password'}, _vars={'direct': 'direkt', 'Password': 'Wachtwoord'})"
-        )
-        assert (
-            d.to_file()
-            == "CleverDict({'zero': 'nul', 'one': 'een', 'two': 'twee', 'three': 'drie', 'four': 'vier', 'five': 'vijf', 'six': 'zes', 7: 'zeven'}, _aliases={'_7': 7}, _vars={'direct': 'direkt'})"
-        )
-        assert (
-            d.to_file(never_save={"six", "Password"})
-            == "CleverDict({'zero': 'nul', 'one': 'een', 'two': 'twee', 'three': 'drie', 'four': 'vier', 'five': 'vijf', 7: 'zeven', 'password': 'password', 'pass': 'wacht'}, _aliases={'_7': 7, '_pass': 'pass', 'PASSWORD': 'pass', 'wachtwoord': 'password'}, _vars={'direct': 'direkt'})"
-        )  # test never_save set functionality
-
-        file_path = Path(tmpdir) / "tmp.txt"
-        d.to_file(file_path=file_path)
-        with open(file_path, "r") as f:
-            assert f.read() == d.to_file()
-
-    def test_from_lines(self, tmpdir):
-        d0 = CleverDict()
-        d0[0] = "nul"
-        d0[1] = "een"
-        d0[2] = "twee"
-        d0[3] = "drie"
-        d0[4] = "vier"
-        d0[5] = "vijf"
-        d0[6] = "zes"
-        d0[7] = "zeven"
-        d10 = CleverDict({i: v for i, v in enumerate(d0.values(), start=10)})
-        lines = d0.to_lines()
-        assert d0 == CleverDict.from_lines(lines)
-        assert d10 == CleverDict.from_lines(lines, start_at=10)
-
-        file_path = Path(tmpdir) / "tmp.txt"
-        d0.to_lines(file_path=file_path)
-        d = CleverDict.from_lines(file_path=file_path)
-        assert d == d0
-        d = CleverDict.from_lines(file_path=file_path, start_at=10)
-        assert d == d10
 
     def test_from_lines(self, tmpdir):
         d0 = CleverDict()
@@ -315,19 +260,6 @@ class Test_Misc:
         with pytest.raises(ValueError):
             CleverDict.from_lines(lines=lines, file_path=file_path)
 
-    def test_from_file(self, tmpdir):
-        d = CleverDict()
-        d[1] = 1
-        d["one"] = "een"
-        d.add_alias("one", "ONE")
-        assert CleverDict.from_file(d.to_file()) == d
-
-        file_path = Path(tmpdir) / "tmp.txt"
-        d.to_file(file_path=file_path)
-        assert CleverDict.from_file(file_path=file_path) == d
-
-        with pytest.raises(ValueError):
-            CleverDict.from_file("NotSoCleverDict()")
 
     def test_from_json(self, tmpdir):
         d = CleverDict()
@@ -341,7 +273,7 @@ class Test_Misc:
         d["7"] = "zeven"
         json_data = d.to_json()
         result = CleverDict.from_json(json_data)
-        assert result == d
+        assert result == d        
 
         file_path = Path(tmpdir) / "tmp.txt"
         d.to_json(file_path=file_path)
@@ -353,6 +285,7 @@ class Test_Misc:
 
         with pytest.raises(ValueError):
             CleverDict.from_json(json_data=json_data, file_path=file_path)
+
 
     def test_to_and_from_json_1(self):
         """ It should be possible to completely reconstruct a CleverDict
