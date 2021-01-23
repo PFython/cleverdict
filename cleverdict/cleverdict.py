@@ -652,14 +652,14 @@ class CleverDict(dict):
             id = "x"
         for k, v in self.items():
             parts = []
-            with Expand(True):
-                for ak in all_aliases(k):
-                    parts.append(f"{id}[{repr(ak)}] == ")
-                for ak in all_aliases(k):
-                    if isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
-                        parts.append(f"{id}.{ak} == ")
+            for ak, av in self._aliases.items():
+                if av == k:
+                    parts.append(f"{id}[{repr(ak)}]")
+            for ak, av in self._aliases.items():
+                if av == k and isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
+                    parts.append(f"{id}.{ak}")
             parts.append(f"{repr(v)}")
-            result.append(indent + "".join(parts))
+            result.append(indent + " == ".join(parts))
         for k, v in vars(self).items():
             if k not in ("_aliases"):
                 result.append(f"{indent}{id}.{k} == {repr(v)}")

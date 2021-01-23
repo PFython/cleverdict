@@ -170,6 +170,8 @@ class Test_Core_Features:
     def test_info(self, capsys):
         global c  # globals are not 'seen' by info()
         z = b = a = c = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
+        c.add_alias(1, "one")
+        c.delete_alias("_True")
         c.setattr_direct("b", "B")
         c.info()  # this prints to stdout
         out, err = capsys.readouterr()
@@ -178,7 +180,7 @@ class Test_Core_Features:
 CleverDict:
     a is b is z
     a[0] == a['_0'] == a['_False'] == a._0 == a._False == 0
-    a[1] == a['_1'] == a['_True'] == a._1 == a._True == 0
+    a[1] == a['_1'] == a['one'] == a._1 == a.one == 0
     a[2] == a['_2'] == a._2 == 0
     a['a'] == a.a == 0
     a['what?'] == a['what_'] == a.what_ == 0
