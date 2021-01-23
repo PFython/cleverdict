@@ -24,7 +24,7 @@ Read on to find out more...
 
 
 ## 2. INSTALLATION
-Very lightweight; just one dependency (`click`):
+Very lightweight - no dependencies:
 
     pip install cleverdict
 
@@ -83,7 +83,7 @@ If you use JSON, you can export data easily with `.to_json()` but all your value
     '{"total": 6, "usergroup": "Knights of Ni"}'
 
     # You can also output to a file using:
-    >>> x.to_json(file="mydata.json")
+    >>> x.to_json(file_path="mydata.json")
 
     ⓘ Saved 'x' in JSON format to:
     D:\Pete's Data\OneDrive\Python Scripts\mydata.json
@@ -151,7 +151,7 @@ Or use `vars()` to import another object's data (but not its methods):
 
 Or import/export JSON strings or files with `.from_json()` and `.to_json()`:
 
-    >>> x = CleverDict.from_json(file="mydata.json")
+    >>> x = CleverDict.from_json(file_path="mydata.json")
 
     >>> json_data = '{"None": null}'
     >>> x = CleverDict.from_json(json_data)
@@ -167,7 +167,7 @@ Or import/export line ("`\n`") delimited strings or files with `.from_lines()` a
     >>> x.to_lines(start_at=7)
     'My LAST'
 
-    >>> x.to_lines(file="lines.txt", start_at=1)
+    >>> x.to_lines(file_path="lines.txt", start_at=1)
 
 ## 5. ATTRIBUTE NAMES AND ALIASES
 
@@ -270,11 +270,15 @@ Similarly the `CleverDict.delete` method is called automatically when an attribu
 
     >>> CleverDict.delete = your_delete_function
 
-Following the "*batteries included*" philosophy, we've included a powerful implementation of this feature for the oh-so-common scenario of wanting to dynamically Create, Remove, Update or Delete a JSON format file, and synchronise everything dynamically as the values in your `CleverDict` change:
+Following the "*batteries included*" philosophy, we've included a powerful implementation of this feature covering TWO very common use cases:
+
+**AUTOSAVE TO JSON FILE**
+
 
     >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
 
     >>> x.autosave("json")
+    # You can also use .autosave("jsonsilent") to suppress the confirmation message.
 
     ⚠ Autosaving to:
     C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
@@ -291,29 +295,25 @@ Following the "*batteries included*" philosophy, we've included a powerful imple
     ⓘ Previous updates saved to:
        C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
 
-You'll notice `CleverDict` helpfully created a JSON file that by default:
+In both cases you'll notice `CleverDict` helpfully created a save file that by default:
 
 - Included a timestamp, hopefully making it unique (enough) for the majority of uses
-- Was saved to the recommended Settings folder of your particular Operating System (thanks to the `click` package which is imported as a dependency)
+- Was saved to the recommended Settings folder of your particular Operating System.
 
-The path to your JSON save file is cunningly stored using `.setattr_direct` (see above) as `.json_path`:
+The path to your save file is cunningly stored using `.setattr_direct` (see above) as `.save_path`:
 
-    >>> x.json_path
+    >>> x.save_path
     WindowsPath('C:/Users/Peter/AppData/Roaming/CleverDict/2021-01-20-15-03-54-30.json')
 
-If you want to customise things further, you also have direct access to the following convenience methods which use `.json_path`:
+If you want to restore the default "no action" behaviour of `.save` or `.delete` you can make use of the `.autosave` helper function:
 
-    >>> x.get_default_settings_path()
-    >>> x.delete_json()
+    >>> x.autosave("off")
 
-If you ever need to restore the default "no action" behaviour of `.save` or `.delete` you can do so as follows:
+Or for finer control:
 
     >>> CleverDict.save = CleverDict.original_save
     >>> CleverDict.delete = CleverDict.original_delete
 
-Or make use of the `.autosave` helper function:
-
-    >>> x.autosave("off")
 
 **NB**: The `.save` and `.delete` methods are *class* methods, so changing `CleverDict.save` will apply the new `.save` method to ***all*** previously created `CleverDict` objects as well as future ones.
 
@@ -329,20 +329,31 @@ When writing your own `save` function, you'll need to specify three arguments as
 * **value**: anything
 
 
-You can then overwrite the original `CleverDict.save` method as follows:
+If you want to specify different `.save` or `.delete` behaviours for different objects, you can use the `.setattr_direct()` method to overwrite the original `.save` and `.delete` without adding these functions to your data dictionary:
 
-    >>> setattr(CleverDict, "save", save)
+    >>> def my_autosave_function(key, value):
+    ...    print("Ni!")
 
+    >>> x = CleverDict({7: "Seven"})
+    >>> x.setattr_direct("save", my_autosave_function)
+    >>> x
+    CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={'save': <function my_autosave_function at 0x000002186CFBF040>})
 
-## 10. HANDY TIPS FOR SUBCLASSING
+And restore the original `.save` or `.delete` method with:
 
-If you want to specify different `.save` or `.delete` behaviours for different objects, consider creating subclasses that inherit from `CleverDict` and set a different `.save` function for each subclass e.g.:
+    >>> x.setattr_direct("save", CleverDict.save)
+
+Alternatively you might prefer to create subclasses that inherit from `CleverDict` and set a different `.save` function for each subclass e.g.:
 
     >>> class Type1(CleverDict): pass
     >>> Type1.save = my_save_function1
 
     >>> class Type2(CleverDict): pass
     >>> Type2.save = my_save_function2
+
+But READ ON if you want to subclass `CleverDict`...
+
+## 10. SUBCLASSING
 
 When you create a subclass of `CleverDict` remember to call `super().__init__()` *before* trying to set any further class or object attributes, otherwise you'll run into trouble:
 
@@ -359,18 +370,7 @@ In the example above we created a simple class variable `.index` to keep a list 
     >>> print(Movie.index)
     [Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]
 
-
-You might like to add a custom `__str__()` method to your subclass, for example calling on the `.info(as_str=True)` method:
-
-    def __str__(self):
-        output = self.info(as_str=True)
-        return output.replace("CleverDict", type(self).__name__, 1)
-
-
-This allows you to print your objects' attributes with ease:
-
-    >>> x = Movie("The Wizard of Oz")
-    >>> print(x)
+    >>> x.info()
     Movie:
         self['title'] == self.title == 'The Wizard of Oz"
 
