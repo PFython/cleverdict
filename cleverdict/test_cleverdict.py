@@ -225,22 +225,47 @@ class Test_Misc:
         d["five"] = "vijf"
         d["six"] = "zes"
         d[7] = "zeven"
+        assert CleverDict.from_json(d.to_json()) == d
+        assert CleverDict.from_json(d.to_json(never_save=["one"])) == eval(d.__repr__(ignore=["one"]))
+        assert CleverDict.from_json(d.to_json(never_save=["one", 7])) == eval(d.__repr__(ignore=["one", 7]))
+
+    def test_to_file(self, tmpdir):
+        d = CleverDict()
+        d["zero"] = "nul"
+        d["one"] = "een"
+        d["two"] = "twee"
+        d["three"] = "drie"
+        d["four"] = "vier"
+        d["five"] = "vijf"
+        d["six"] = "zes"
+        d[7] = "zeven"
+        d["password"] = "password"
+        d["pass"] = "wacht"
+        d.add_alias("pass", "PASSWORD")
+        d.add_alias("password", "wachtwoord")
+        d.setattr_direct("direct", "direkt")
+        d.setattr_direct("Password", "Wachtwoord")
         assert (
-            d.to_json()
-            == '{"zero": "nul", "one": "een", "two": "twee", "three": "drie", "four": "vier", "five": "vijf", "six": "zes", "7": "zeven", "_7": "zeven"}'
+            repr(d)
+            == "CleverDict({'zero': 'nul', 'one': 'een', 'two': 'twee', 'three': 'drie', 'four': 'vier', 'five': 'vijf', 'six': 'zes', 7: 'zeven', 'password': 'password', 'pass': 'wacht'}, _aliases={'_7': 7, '_pass': 'pass', 'PASSWORD': 'pass', 'wachtwoord': 'password'}, _vars={'direct': 'direkt', 'Password': 'Wachtwoord'})"
         )
         assert (
-            d.to_json(never_save=["one"])
-            == '{"zero": "nul", "two": "twee", "three": "drie", "four": "vier", "five": "vijf", "six": "zes", "7": "zeven", "_7": "zeven"}'
+            d.to_file()
+            == "CleverDict({'zero': 'nul', 'one': 'een', 'two': 'twee', 'three': 'drie', 'four': 'vier', 'five': 'vijf', 'six': 'zes', 7: 'zeven'}, _aliases={'_7': 7}, _vars={'direct': 'direkt'})"
         )
         assert (
-            d.to_json(never_save=["one", 7])
-            == '{"zero": "nul", "two": "twee", "three": "drie", "four": "vier", "five": "vijf", "six": "zes"}'
-        )
+            d.to_file(never_save={"six", "Password"})
+            == "CleverDict({'zero': 'nul', 'one': 'een', 'two': 'twee', 'three': 'drie', 'four': 'vier', 'five': 'vijf', 7: 'zeven', 'password': 'password', 'pass': 'wacht'}, _aliases={'_7': 7, '_pass': 'pass', 'PASSWORD': 'pass', 'wachtwoord': 'password'}, _vars={'direct': 'direkt'})"
+        )  # test never_save set functionality
+
+        file_path = Path(tmpdir) / "tmp.txt"
+        d.to_file(file_path=file_path)
+        with open(file_path, "r") as f:
+            assert f.read() == d.to_file()
 
     def test_from_lines(self, tmpdir):
-        d0=CleverDict()
-        d0[0]="nul"
+        d0 = CleverDict()
+        d0[0] = "nul"
         d0[1] = "een"
         d0[2] = "twee"
         d0[3] = "drie"
@@ -261,8 +286,8 @@ class Test_Misc:
         assert d == d10
 
     def test_from_lines(self, tmpdir):
-        d0=CleverDict()
-        d0[0]="nul"
+        d0 = CleverDict()
+        d0[0] = "nul"
         d0[1] = "een"
         d0[2] = "twee"
         d0[3] = "drie"
@@ -288,6 +313,19 @@ class Test_Misc:
         with pytest.raises(ValueError):
             CleverDict.from_lines(lines=lines, file_path=file_path)
 
+    def test_from_file(self, tmpdir):
+        d = CleverDict()
+        d[1] = 1
+        d["one"] = "een"
+        d.add_alias("one", "ONE")
+        assert CleverDict.from_file(d.to_file()) == d
+
+        file_path = Path(tmpdir) / "tmp.txt"
+        d.to_file(file_path=file_path)
+        assert CleverDict.from_file(file_path=file_path) == d
+
+        with pytest.raises(ValueError):
+            CleverDict.from_file("NotSoCleverDict()")
 
     def test_from_json(self, tmpdir):
         d = CleverDict()
@@ -327,22 +365,22 @@ class Test_Misc:
     def test_to_and_from_json_2(self):
         """ Automatically created aliases should be presevered after .to_json
         followed by .from_json """
-        d= CleverDict({"#1": 1})
+        d = CleverDict({"#1": 1})
         j = d.to_json()
         new_d = CleverDict.from_json(j)
-        assert d._1 is d['#1']
-        assert new_d._1 is new_d['#1']
+        assert d._1 is d["#1"]
+        assert new_d._1 is new_d["#1"]
         new_d._1 += 1
-        assert new_d._1 == new_d['#1']
-
-    def example_user_code(clever_dict):
-        """ Typical use of CleverDict is aliases to provide interchangeable
-        attributes.  In this case .number and .Number.  Quite subtle and easy
-        to overlook when debugging """
-        clever_dict.number += 1
-        return clever_dict.Number
+        assert new_d._1 == new_d["#1"]
 
     def test_to_and_from_json_3(self):
+        def example_user_code(clever_dict):
+            """ Typical use of CleverDict is aliases to provide interchangeable
+            attributes.  In this case .number and .Number.  Quite subtle and easy
+            to overlook when debugging """
+            clever_dict.number += 1
+            return clever_dict.Number
+
         """ example_user_code should work equally well after .to_json followed
         by .from_json """
         d = CleverDict({"number": 1})
@@ -353,56 +391,28 @@ class Test_Misc:
         assert example_user_code(d) == 2
         assert example_user_code(new_d) == 2
 
-    def test_to_and_from_json_4(self):
-        """
-        json.dumps converts numeric keys to strings e.g.
-        {1:1} -> {"1":1}
-
-        .to_json should optionally create an alias so that it's possible to reconstruct a CleverDict object after .to_json followed by .from_json
-        """
-        d = CleverDict({1:1})
-        j = d.to_json(numeric_keys=True)
-        # New numeric string alias created by .to_json():
-        assert d["1"] is d[1] is d._1 is d[1] == 1
-        new_d = CleverDict.from_json(j, numeric_keys=True)
-        assert new_d["1"] is new_d[1] is new_d._1 is new_d[1] == 1
-
-
-
-
-
     def test_get_default_settings_path(self):
         path = CleverDict.get_default_settings_path()
-        dir = path.parent
-        cleanup = False
-        if not dir.is_dir():  # if the CleverDict folder is not present, cleanup properly
-            dir.mkdir(parents=True)
-            cleanup = True
-
         info = "test"
         with open(path, "w") as file:
             file.write(info)
         with open(path, "r") as file:
-            read_info = file.read()
+            assert file.read() == info
         path.unlink()
-        isfile = path.is_file()
-        if cleanup: # has to be done before the asserts, to be able to cleanup properly
-            dir.rmdir()
 
-        assert not isfile
-        assert read_info == info
         assert CleverDict.get_default_settings_path() != path  # when called a second time, should be different
-
 
     def test_get_app_dir(self):
         """
         tests whether the cleverdict implementation of get_app_dir is ok (can only be tested if click is installed)
+        it will test only the right output on the OS the test is running on
         """
         try:
             import click
         except ModuleNotFoundError:
             pytest.skip("could not import click")
-        assert click.get_app_dir('x') == cleverdict.get_app_dir('x')
+        assert click.get_app_dir("x") == cleverdict.get_app_dir("x")
+
 
 class Test_Internal_Logic:
     def test_raises_error(self):
@@ -647,6 +657,8 @@ def example_save_function(self, key, value):
     output = f"Notional save to database: .{key} = {value} {type(value)}"
     with open("example.log", "a") as file:
         file.write(output + "\n")
+
+
 #    print(output)
 
 
@@ -718,6 +730,8 @@ class Test_Save_Functionality:
 
 def example_delete_function(self, key):
     pass
+
+
 #    print(f"Notionally deleting '{key}''")
 
 

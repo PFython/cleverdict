@@ -1,13 +1,11 @@
 """
 Ruud:
+
 version doesn't exists anymore. Why?
 
-Added tests for new functionality
+Docstrings should be updated or added
 
-I have extracted (cloned) get_app_dir from click, so no more dependencies
-
-I haven't looked at the delete functionality (and the tests)
-
+Removed all my other comments
 """
 
 import os
@@ -192,18 +190,10 @@ class CleverDict(dict):
             CleverDict.save = CleverDict._save_value_to_json_file
             CleverDict.delete = CleverDict._delete_value_from_json_file
             self.create_json_file()
-                # Ruud: I think you shouldn't print anything from CleverDict
-
-#            print(f"\n⚠ Autosaving to:\n  {self.json_path}\n")
             self.to_json(file=self.json_path)
         if setting.lower() == "off":
             CleverDict.save = CleverDict.original_save
             CleverDict.delete = CleverDict.original_delete
-                # Ruud: I think you shouldn't print anything from CleverDict
-
-#            print("\n⚠ Autosave disabled.")
-#            if hasattr(self, "json_path"):
-#                print(f"\nⓘ Previous updates saved to:\n  {self.json_path}\n")
 
     def __setattr__(self, name, value):
         if name in self._aliases:
@@ -245,10 +235,16 @@ class CleverDict(dict):
             return self.items() == other.items() and vars(self) == vars(other)
         return NotImplemented
 
-    def __repr__(self):
-        _mapping = dict(self.items())
-        _aliases = {k: v for k, v in self._aliases.items() if k not in self}
-        _vars = {k: v for k, v in vars(self).items() if k != "_aliases"}
+    def __repr__(self, ignore=None):
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | {"_aliases", "never_save"}
+        _mapping = {k: v for k, v in self.items() if k not in ignore}
+        for k, v in self._aliases.items():
+            if k in ignore and v in _mapping:
+                del _mapping[v]
+        _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
+        _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
     def _add_alias(self, name, alias):
@@ -327,10 +323,12 @@ class CleverDict(dict):
         """
         # Get a timestamp
         t = "".join([x if x.isnumeric() else "-" for x in str(datetime.now())])
-        id = f"{t[:-4]}.json"
-        return Path(get_app_dir("CleverDict")) / id
+        id = f"{t}.json"
+        dir = Path(get_app_dir("CleverDict"))
+        if not dir.is_dir():
+            dir.mkdir(parents=True)
+        return dir / id
 
-# Ruud: updated. No more *kwargs, etc.
     def to_lines(self, file_path=None, start_at=0):
         """
         Creates a line ("\n") delimited object or file using values for lines
@@ -342,7 +340,6 @@ class CleverDict(dict):
             file.write(lines)
 
     @classmethod
-# Ruud: updated. No more *kwargs, etc.
     def from_lines(cls, lines=None, file_path=None, start_at=0):
         """
         Creates a new CleverDict object and loads data from a line ('\n')
@@ -362,7 +359,24 @@ class CleverDict(dict):
         return cls(index)
 
     @classmethod
-# Ruud: updated. No more *kwargs, etc.
+    def from_file(cls, dump_data=None, file_path=None):
+        if dump_data and file_path:
+            raise ValueError("both json_data and file_path specified")
+        if not (dump_data or file_path):
+            raise ValueError("neither json_data nor file_path specified")
+
+        if file_path:
+            with open(file_path, "r", encoding="utf-8") as file:
+                dump_data = file.read()
+        if dump_data.startswith("CleverDict(") and dump_data.endswith(")"):
+            env = {}
+            for var in ("locals", "globals", "__name__", "__file__", "--builtins__"):
+                env[var] = None
+            return eval(dump_data, {"CleverDict": globals()["CleverDict"]}, {})  # restrict access to CleverDict
+        else:
+            raise ValueError(f"Incorrect format in {dump_data}")
+
+    @classmethod
     def from_json(cls, json_data=None, file_path=None):
         """
         Creates a new CleverDict object and loads data from a JSON object or
@@ -378,7 +392,9 @@ class CleverDict(dict):
                 values = json.load(file)
         else:
             values = json.loads(json_data)
-        return cls(values)
+        if list(values.keys()) != [""]:
+            raise ValueError("Incorrect json file for CleverDict")
+        return cls.from_file(values[""])
 
     def create_json_file(self):
         """
@@ -388,15 +404,24 @@ class CleverDict(dict):
         """
         try:
             os.makedirs(self.json_path.parent)
-                # Ruud: I think you shouldn't print anything from CleverDict
-#            print(f"\nⓘ Folder created:\n {self.json_path.parent}")
+
         except FileExistsError:
             pass
         with open(self.json_path, "w", encoding="utf-8") as file:
             json.dump({}, file)  # Create skeleton .json file
 
+    def to_file(self, never_save=None, file_path=None):
+        if never_save is None:
+            never_save = self.never_save
+        result = self.__repr__(ignore=never_save)
+        if file_path:
+            with open(Path(file_path), "w", encoding="utf-8") as file:
+                file.write(result)
+        else:
+            return result
+
     def to_json(self, never_save=None, file_path=None):
-# Ruud: updated. No more *kwargs, neversave copied from the class never_save if not specified, etc.
+
         """
         Return CleverDict serialised to JSON.
 
@@ -406,20 +431,10 @@ class CleverDict(dict):
         file: Save to file if True or filepath
 
         """
-        if never_save is None:
-            never_save = self.never_save
-        fields_dict = {alias: self[alias] for alias, key in self._aliases.items() if key not in never_save}
-        json_str = json.dumps(fields_dict)
+        json_str = json.dumps({"": self.to_file(never_save=never_save)})
         if file_path:
             with open(Path(file_path), "w", encoding="utf-8") as file:
                 file.write(json_str)
-                # Ruud: I think you shouldn't print anything from CleverDict
-        #            if CleverDict.save is not CleverDict._save_value_to_json_file:
-        #                # Avoid spamming confirmation messages
-        #                frame = inspect.currentframe().f_back.f_locals
-        #                ids = [k for k, v in frame.items() if v is self]
-        #                ids = ids[0] if len(ids) == 1 else "/".join(ids)
-        #                print(f"\nⓘ Saved '{ids}' in JSON format to:\n {Path(file_path).absolute()}")
         else:
             return json_str
 
@@ -442,15 +457,6 @@ class CleverDict(dict):
             self.setattr_direct("json_path", Path(path))
             self.create_json_file()
         self.to_json(file=self.json_path)
-        if key:
-            if key in CleverDict.never_save:
-                location = "memory but NOT saved to file"
-            else:
-                location = self.json_path  # self["json_path"]
-            # Comment out if confirmation not required:
-                # Ruud: I think you shouldn't print anything from CleverDict
-#            print(f"\n✓ .{key} updated in:\n  {location}")
-        # TODO: Check for common unsupported types and convert to/from strings
 
     def save(self, name, value):
         """
@@ -478,9 +484,6 @@ class CleverDict(dict):
             location = "memory and was never saved to file"
         else:
             location = self.json_path  # self["json_path"]
-        # Comment out if confirmation not required:
-                # Ruud: I think you shouldn't print anything from CleverDict
-#        print(f"\n✓ .{key} deleted from {location}")
 
     def delete(self, name):
         """
@@ -736,16 +739,4 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
 
 
 if __name__ == "__main__":
-    global d
-    d = CleverDict()
-    d["zero"] = "nul"
-    d["one"] = "een"
-    d["two"] = "twee"
-    d["three"] = "drie"
-    d["four"] = "vier"
-    d["five"] = "vijf"
-    d["six"] = "zes"
-    d["7"] = "zeven"
-    d["password"] = "password"
-    j = d.to_json()
-    print(j)
+    pass
