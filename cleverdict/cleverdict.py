@@ -11,20 +11,20 @@ from datetime import datetime
 Change log
 ==========
 
-version 1.7.4rc4 2021-23-01
+version 1.8
 ---------------------------
-Removed identify_self
-Reinstated print for autosave, with 'silent' option
-Added file option to autosave
-Enabled instance-specific overwriting of .save and.delete
-JSON only converts data dictionary; use to_file/from_file for reconstruction
-
-
-version 1.7.4 2021-01-20
-------------------------
+Added to_json() and from_json()
+Added to_lines() and from_lines()
+Removed identify_self()
+Reinstated print for autosave (only), but with 'silent' option
+to_json(fullcopy=True) creates JSON that can fully recreate a CleverDict
+to_json(fullcopy=False) creates JSON from data dictionary only
+__delattr__ removes attributes created using setattr_direct
+Dependency on click removed
+Applied never_save to: to_lines, to_list, to_json
 Auto-delete feature implemented:
 https://github.com/PFython/cleverdict/issues/11
-Auto-save to json config file implemented:
+Auto-save to json file implemented:
 https://github.com/PFython/cleverdict/issues/10
 
 
@@ -159,15 +159,10 @@ class CleverDict(dict):
         a dictionary that contains items as follows:
             key: attribute which, when set, will *not* become an item of the Clever Dictionary.
             value : value of this attribute.
-
-    KWARGS:
-
-    json_save : overwrite .save and auto-save changes to JSON config file
-    json_load : load values from existing JSON config file
     """
 
     expand = True  # Used by .delete_alias
-    never_save = "password PASSWORD Password".split()
+    never_save = "password PASSWORD Password save_path".split()
 
     def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
         self.setattr_direct("_aliases", {})
@@ -183,50 +178,46 @@ class CleverDict(dict):
             if not hasattr(CleverDict, attr):
                 setattr(CleverDict, attr, getattr(self, attr.split("_")[-1]))
 
-    def autosave(self, option, path=None):
+    def autosave(self, fullcopy=False, silent=False):
         """ Toggles autosave to a config file.
 
         Parameters
         ----------
 
-        option: str
-            Specifies what action to take:
-                "json" -> Save using to_json()
-                "file" -> Save using to_file()
-                "jsonsilent" -> Like "json" but no confirmation messaged printed
-                "filesilent" -> Like "file" but no confirmation messaged printed
-                "off" -> Turn off autosave
-                "offsilent" -> Like "off" but no confirmation messaged printed
+        fullcopy: bool or str
+            False -> Autosave using  _auto_save_data
+            True -> Autosave using  _auto_save_fullcopy
+            "off" -> Turn off autosave and delete .save_path
+        silent: bool
+            False -> Print confirmations and file path
+            True -> No confirmationor file path printed
         """
-        json_or_file = option[:4].lower() in ("json", "file")
-        suffix = ".json" if option.lower().startswith("json") else ".py"
-        if path is None and json_or_file:
-            path = self.get("save_path")
-            if not path:
-                path = self.get_new_save_path().with_suffix(suffix)
-        if json_or_file:
-            self.setattr_direct("save_path", Path(path))
-            if not path.is_file():
-                self.create_save_file()
-            CleverDict.save = CleverDict._auto_save_to_file
-            CleverDict.delete = CleverDict._auto_save_to_file
-            # NB: save and delete call the same method, resaving the entire file
-            if suffix == ".json":
-                self.to_json(file_path=self.save_path)
-            else:
-                self.to_file(file_path=self.save_path)
-            if not option.endswith("silent"):
-                print(f"\n⚠ Autosaving to:\n  {path}\n")
-        if option.lower().startswith("off"):
+        if fullcopy == "off":
             try:
                 CleverDict.save = CleverDict.original_save
                 CleverDict.delete = CleverDict.original_delete
-                if not option.endswith("silent"):
-                    print("\n⚠ Autosave disabled.")
-                    print(f"\nⓘ Previous updates saved to:\n  {self.save_path}\n")
+                del self.save_path
+                if not silent:
+                    print("\n ⚠  Autosave disabled.")
+                    print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")
             except AttributeError:
                 # Attempting to turn autosave off before it was ever enabled
                 return
+        else:
+            path = self.get("save_path") or self.get_new_save_path()
+            path = path.with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+            if not path.is_file():
+                self.create_save_file()
+            if fullcopy:
+                CleverDict.save = CleverDict._auto_save_fullcopy
+            else:
+                CleverDict.save = CleverDict._auto_save_data
+            # Save and delete events trigger a call to the same method:
+            CleverDict.delete = CleverDict._auto_delete
+            self.save(key=None, value=None)
+            if not silent:
+                print(f"\n ⚠  Autosaving to:\n  {path}\n")
 
     def __setattr__(self, name, value):
         if name in self._aliases:
@@ -261,7 +252,10 @@ class CleverDict(dict):
         try:
             del self[k]
         except KeyError as e:
-            raise AttributeError(e)
+            if hasattr(self, k):
+                super().__delattr__(k)
+            else:
+                raise AttributeError(e)
 
     def __eq__(self, other):
         if isinstance(other, CleverDict):
@@ -344,7 +338,7 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
-        return list(self.items())
+        return [(k,v) for k,v in self.items() if k not in self.never_save]
 
     @classmethod
     def get_new_save_path(cls):
@@ -366,7 +360,8 @@ class CleverDict(dict):
         """
         Creates a line ("\n") delimited object or file using values for lines
         """
-        lines = "\n".join(itertools.islice(self.values(), start_at, None))
+        to_save = {k:v for k,v in self.items() if k not in self.never_save}
+        lines = "\n".join(itertools.islice(to_save.values(), start_at, None))
         if not file_path:
             return lines
         with open(file_path, "w", encoding="utf-8") as file:
@@ -416,44 +411,37 @@ class CleverDict(dict):
         except KeyError:
             return(cls(data))
 
-
-    def create_json_file(self):
+    def create_save_file(self):
         """
-        Uses click to find & create a platform-appropriate easyPyPI folder, then
-        creates a skeleton json file there to store persistent data (if one
-        doesn't already exist, or if the current one is empty).
+        Creates a skeleton to store autosave data if one doesn't already exist.
         """
+        if self.save_path.is_file():
+            return
         try:
-            os.makedirs(self.json_path.parent)
-
+            os.makedirs(self.save_path.parent)
         except FileExistsError:
             pass
-        with open(self.json_path, "w", encoding="utf-8") as file:
-            json.dump({}, file)  # Create skeleton .json file
+        with open(self.save_path, "w", encoding="utf-8") as file:
+            file.write('{"empty": True}')  # Create skeleton .json file
 
 
 
-    def to_json(self, never_save=None, file_path=None, clone=False):
+    def to_json(self, file_path=None, fullcopy=False):
 
         """
         Return CleverDict serialised to JSON.
 
-        If never_save is not specified, the class never_save is used
+        If never_save is not specified, the class variable .never_save is used
 
         never_save: Exclude field in CleverDict.never_save if True eg passwords
         file: Save to file if True or filepath
 
         """
-        if not clone:
-            if never_save is None:
-                never_save = self.never_save
-            fields_dict = {alias: self[alias] for alias, key in self._aliases.items() if key not in never_save}
-            json_str = json.dumps(fields_dict)
+        never_save = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        _mapping = {k: v for k, v in self.items() if k not in never_save}
+        if not fullcopy:
+            json_str = json.dumps(_mapping, indent=4)
         else:
-            if never_save is None:
-                never_save = set()
-            never_save = set(never_save) | {"_aliases", "never_save"}
-            _mapping = {k: v for k, v in self.items() if k not in never_save}
             for k, v in self._aliases.items():
                 if k in never_save and v in _mapping:
                     del _mapping[v]
@@ -461,32 +449,12 @@ class CleverDict(dict):
             _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
             _aliases_encoded = {repr(k): v for k, v in _aliases.items()}
             _vars = {k: v for k, v in vars(self).items() if k not in never_save}
-            json_str = json.dumps( {'_mapping_encoded':_mapping_encoded, '_aliases_encoded': _aliases_encoded, '_vars':_vars})
+            json_str = json.dumps({'_mapping_encoded':_mapping_encoded, '_aliases_encoded': _aliases_encoded, '_vars':_vars}, indent=4)
         if file_path:
             with open(Path(file_path), "w", encoding="utf-8") as file:
                 file.write(json_str)
         else:
             return json_str
-
-    def _save_value_to_json_file(self, key=None, value=None):
-        """
-        If .autosave("json") is called on an object, this overwrites
-        the default .save() method and is called every time a value changes or
-        is created.
-
-        This new method is used to update a json config file automatically.
-
-        If no valid Path is supplied, a default, operating system specific path
-        will be created using click.
-
-        NB JSON can only serialise certain datatypes.  Python sets, for example,
-        are not currently supported.
-        """
-        if not hasattr(self, "json_path"):
-            path = self.get_new_save_path()
-            self.setattr_direct("json_path", Path(path))
-            self.create_json_file()
-        self.to_json(file=self.json_path)
 
     def save(self, name, value):
         """
@@ -507,6 +475,59 @@ class CleverDict(dict):
         CleverDict.delete = custom_delete_method
         """
         pass
+
+    def _auto_save_data(self, key=None, value=None):
+        """
+        Calls _auto_save_json to save a copy of the data dictionary (only) in
+        JSON format, without any mappings, aliases, and directly set attributes.
+
+        If .autosave() is called on an object, this method overwrites the
+        default .save() method and is called every time a value changes or is
+        created.
+        """
+        if not hasattr(self, "save_path"):
+            # For new instances created while autosave is active
+            path = self.get_new_save_path().with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+        self.to_json(file_path=self.save_path)
+
+    def _auto_save_fullcopy(self, key=None, value=None):
+        """
+        Calls _auto_save_json to save a full copy of the CleverDict instance in
+        JSON format, in with all mappings, aliases, and directly set attributes.
+
+        If .autosave(fullcopy=True) is called on an object, this method
+        overwrites the default .save() method and is called every time a value
+        changes or is created.
+        """
+        self._auto_save_json(key=key, value=value, fullcopy=True)
+
+    def _auto_save_json(self, key=None, value=None, fullcopy=False):
+        """
+        If .autosave("json") is called on an object, this overwrites
+        the default .save() method and is called every time a value changes or
+        is created.
+
+        NB JSON can only serialise certain datatypes.  Python sets, for example,
+        are not currently supported, and would therefore need to be simplified
+        further to avoid TypError.
+        """
+        if not hasattr(self, "save_path"):
+            # For new instances created while autosave is active
+            path = self.get_new_save_path().with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+        self.to_json(file_path=self.save_path, fullcopy=fullcopy)
+
+    def _auto_delete(self, key=None):
+        """Currently just calls CleverDict.save but could be overwritten with
+        something more sophisticated.
+
+        If .autosave() is called on an object, this method overwrites the
+        default .delete() method and is called every time a value changes or is
+        created.
+        """
+        CleverDict.save(self, key=key)
+
 
     def setattr_direct(self, name, value):
         """
@@ -736,17 +757,3 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
         return os.path.join(os.path.expanduser("~/Library/Application Support"), app_name)
     return os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), _posixify(app_name))
 
-
-if __name__ == "__main__":
-    def p(cld):
-        print(cld.info())
-
-    c=d=CleverDict({1:2, 3:4,0:5,"string":6})
-    d.add_alias(3, 'nul')
-    d.setattr_direct('extra', 4)
-    l = d.to_json()
-    print(l)
-    e = CleverDict.from_json(l)
-
-    print(e)
-    print(d==e)

@@ -1,6 +1,6 @@
 # CleverDict
 
-![simplicity](https://image.slidesharecdn.com/iotshifts20150911-151021225240-lva1-app6891/95/smart-citizens-populating-smart-cities-iotshifts-19-638.jpg?cb=1506979421)
+![cleverdict logo](https://raw.githubusercontent.com/PFython/cleverdict/issues-and-enhancements/cleverdict.png)
 
 ## 1. OVERVIEW
 
@@ -20,7 +20,7 @@ No more slavishly writing your own "save" or "update" function and trying to rem
 
 The other main feature of `CleverDict` is that it supports **Aliases** which link to the original dictionary keys.  This is really handy for data mapping e.g. taking an API response and making it play nicely with your own data structures.
 
-Read on to find out more...
+If you just want to understand the core features of `CleverDict`, please read up to and including **Section 4**.  There are quite a few advanced features and "edge case" which are dealt with more thoroughly after that, but don't be daunted!  We've done the deep thinking so you don't have to... hopefully ;)
 
 
 ## 2. INSTALLATION
@@ -77,20 +77,16 @@ The values are then immediately available using either dictionary or `.attribute
     >>> type(x.to_list)
     <class 'method'>
 
-If you use JSON, you can export data easily with `.to_json()` but all your values must capable of being serialised to JSON obviously, so no Python sets or custom objects unless you convert them to something that JSON *can* handle first:
+If you use JSON, you can export your dictionary data easily with `.to_json()` but all your values must be capable of being serialised to JSON obviously, so no Python sets or custom objects unless you convert them to something that JSON *can* handle first:
 
     >>> x.to_json()
     '{"total": 6, "usergroup": "Knights of Ni"}'
 
-    # You can also output to a file using:
+    # Or output to a file:
     >>> x.to_json(file_path="mydata.json")
 
-    ⓘ Saved 'x' in JSON format to:
-    D:\Pete's Data\OneDrive\Python Scripts\mydata.json
-    '{"total": 6, "usergroup": "Knights of Ni"}'
 
-
-You can also use the `.to_list()` method to generate a list of key/value pairs from a `CleverDict` object e.g. for Client/Server serialisation:
+You can also use the `.to_list()` method to generate a list of key/value pairs:
 
     >>> x = CleverDict({1: "one", 2: "two"})
 
@@ -99,7 +95,7 @@ You can also use the `.to_list()` method to generate a list of key/value pairs f
 
 
 ## 4. OTHER EASY WAYS TO IMPORT/EXPORT DATA
-You can create a `CleverDict` instance using keyword arguments like this:
+You can create a `CleverDict` instance using keyword arguments:
 
     >>> x = CleverDict(created = "today", review = "tomorrow")
 
@@ -108,36 +104,36 @@ You can create a `CleverDict` instance using keyword arguments like this:
     >>> x['review']
     'tomorrow'
 
-Or use a list of tuple/list pairs:
+Or use a list of tuple pairs and/or list pairs:
 
     >>> x = CleverDict([("value1", "one"), ["value2", "two"], ("value3", "three")])
 
     >>> x.value1
     'one'
-    >>> x.value2
+    >>> x['value2']
     'two'
-    >>> x.value3
+    >>> getattr(x, "value3")
     'three'
 
-You can use the built-in `.fromkeys()` dictionary method like this:
+You can also use the built-in dictionary method `.fromkeys()`  like this:
 
     >>> x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
 
     >>> x
     CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})
 
-> *(\*) See Sections 5 and 7 below to find out what `_aliases={}` and `_vars={}` mean in the output above...*
+> *(\*) See Sections 5 and 7 to understand `_aliases={}` and `_vars={}` in the output above...*
 
+You can use an existing `CleverDict` object as input:
 
-Or reuse an existing `CleverDict` object:
-
+    >>> x = CleverDict({1: "one", 2: "two"})
     >>> y = CleverDict(x)
 
     >>> y
     CleverDict({'total': 6, 'usergroup': 'Knights of Ni'}, _aliases={}, _vars={})
 
-    >>> y is x
-    False
+    >>> y.items()
+    dict_items([(1, 'one'), (2, 'two')])
 
 Or use `vars()` to import another object's data (but not its methods):
 
@@ -148,21 +144,26 @@ Or use `vars()` to import another object's data (but not its methods):
     >>> x
     CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
 
-
-Or import/export JSON strings or files with `.from_json()` and `.to_json()`:
-
-    >>> x = CleverDict.from_json(file_path="mydata.json")
+A really nice feature is the ability to import/export JSON strings or files using `.from_json()` and `.to_json()`:
 
     >>> json_data = '{"None": null}'
     >>> x = CleverDict.from_json(json_data)
+    >>> x
+    CleverDict({'None': None}, _aliases={'_None': 'None'}, _vars={})
 
-Or import/export line ("`\n`") delimited strings or files with `.from_lines()` and `.to_lines()`:
+    >>> x.to_json(file_path="mydata.json")
+
+    >>> y = CleverDict.from_json(file_path="mydata.json")
+    >>> x == y
+    True
+
+And you can import/export line ("`\n`") delimited strings or files using `.from_lines()` and `.to_lines()`:
 
     >>> lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
     >>> x=CleverDict.from_lines(lines, start_at=1)
 
-    >>> x
-    CleverDict({1: 'This is my first line', 2: 'My second...', 3: '', 4: '', 5: '', 6: '', 7: 'My LAST'}, _aliases={'_1': 1, '_True': 1, '_2': 2, '_3': 3, '_4': 4, '_5': 5, '_6': 6, '_7': 7}, _vars={})
+    >>> x.to_list()
+    [(1, 'This is my first line'), (2, 'My second...'), (3, ''), (4, ''), (5, ''), (6, ''), (7, 'My LAST'), (8, '')]
 
     >>> x.to_lines(start_at=7)
     'My LAST'
@@ -180,7 +181,7 @@ By default `CleverDict` tries to find valid attribute names for dictionary keys 
     >>> x
     CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})
 
-`CleverDict` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in `._aliases`.  You can add or delete further aliases with `.add_alias` and `.delete_alias`, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
+`CleverDict` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in `._aliases`.  You can add or delete further aliases with `.add_alias()` and `.delete_alias()`, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
 
     >>> x.add_alias(7, "NumberSeven")
 
@@ -199,7 +200,23 @@ By default `CleverDict` tries to find valid attribute names for dictionary keys 
 
 ## 6. DEEPER DIVE INTO ATTRIBUTE NAMES
 
-Did you know that the dictionary keys `0`, `0.0`, and `False` are considered the same in Python?  Likewise `1`, `1.0`, and `True`, and `1234` and `1234.0`?  If you create a regular dictionary using more than one of these different identities, they'll appear to 'overwrite' each other, keeping the **first Key** specified but the **last Value** specified, reading left to right:
+
+**QUIZ QUESTION:** Did you know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?
+
+    >>> x = CleverDict(значение = "znacheniyeh: Russian word for 'value'")
+    >>> x.значение
+    "znacheniyeh: Russian word for 'value'"
+
+`CleverDict` handles this and replaces all remaining *invalid* characters such as punctuation marks with "`_`" on a *first come, first served* basis.  To avoid duplicates or over-writing, a `KeyError` is raised if required, which is your **strong hint** to rename the offending dictionary keys!  For example:
+
+    >>> x = CleverDict({"one-two": "hypen",
+                        "one/two": "forward slash"})
+    KeyError: "'one_two' already an alias for 'one-two'"
+
+    >>> x = CleverDict({"one-two": "hypen",
+                        "one_or_two": "forward slash"})
+
+**BONUS QUESTION:** Did you also know that the dictionary keys `0`, `0.0`, and `False` are considered the same in Python?  Likewise `1`, `1.0`, and `True`, and `1234` and `1234.0`?  If you create a regular dictionary using more than one of these different identities, they'll appear to 'overwrite' each other, keeping the **first Key** specified but the **last Value** specified, reading left to right:
 
     >>> x = {1: "one", True: "the truth"}
 
@@ -215,35 +232,16 @@ You'll be relieved to know `CleverDict` handles these cases but we thought it wa
     x is y is z
     x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'
 
-    # Use 'as_str=True' to return the results as a printable string:
+
+And if you use `info('as_str=True')` you'll get the results as a printable string:
+
     >>> x.info(as_str=True)
 
     "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
 
-You'll notice in the example above that `.info()` lists all the names assigned to the current instance rather than just referring to `self`.  If you want to get these names programmatically you can use the handy `.identify_self()` method:
-
-    >>> a_more_meaningful_name = x
-
-    >>> x.identify_self()
-    ['a_more_meaningful_name', 'x', 'y', 'z']
-
-Did you also know that since [PEP3131](https://www.python.org/dev/peps/pep-3131/) many unicode letters are valid in attribute names?
-
-    >>> x = CleverDict(значение = "znacheniyeh: Russian word for 'value'")
-    >>> x.значение
-    "znacheniyeh: Russian word for 'value'"
-
-`CleverDict` handles this and replaces all remaining *invalid* characters such as punctuation marks with "`_`" on a *first come, first served* basis.  To avoid duplicates or over-writing, a `KeyError` is raised if required, which is your prompt to rename the offending dictionary keys!  For example:
-
-    >>> x = CleverDict({"one-two": "hypen",
-                        "one/two": "forward slash"})
-    KeyError: "'one_two' already an alias for 'one-two'"
-
-    >>> x = CleverDict({"one-two": "hypen",
-                        "one_or_two": "forward slash"})
 
 ## 7. SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM
-We've included the `.setattr_direct()` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally by `CleverDict` to store aliases in `._aliases`.  Any variables which are set directly with `.setattr_direct()` are stored in `_vars` and these, along with `CleverDict` functions/methods are NOT exported when using methods like `to_json` and `to_list`.
+We've included the `.setattr_direct()` method in case you want to set an object attribute *without* creating the corresponding dictionary key/value.  This could be useful for storing save data for example, and is used internally by `CleverDict` to store aliases in `._aliases` and the location of the autosave file in `save_path`.  Any variables which are set directly with `.setattr_direct()` are stored in `_vars` and these, along with `CleverDict` functions/methods are NOT exported when using methods like `.to_json()`, `.to_lines()`, and `.to_list()`.
 
     >>> x = CleverDict()
     >>> x.setattr_direct("direct", True)
@@ -251,42 +249,68 @@ We've included the `.setattr_direct()` method in case you want to set an object 
     >>> x
     CleverDict({}, _aliases={}, _vars={'direct': True})
 
-Here's one way you could sbuclass `CleverDict` to create a `.store` attribute and customise the auto-save behaviour for example:
+By default `.to_json()` will ONLY export your data dictionary items.  After all, `CleverDict` is a *dictionary* first and foremost.  However, by specifying `.to_json(fullcopy=True)` you can include **all aliases** and **all attributes** created with `setattr_direct`.
 
-    class SaveDict(CleverDict):
-        def __init__(self, *args, **kwargs):
-            self.setattr_direct('store', [])
-            super().__init__(*args, **kwargs)
+This gives you a neat way of fully saving `CleverDict` objects with all mappings and the contents of `_vars` intact.  Then, subject to normal JSON limitations, you can *completely reconstruct* your original `CleverDict` using `.from_json`:
 
-        def save(self, name, value):
-            self.store.append((name, value))
+    >>> x.to_json(file_path="mydata.json", fullcopy=True)
+
+    >>> y = CleverDict.from_json(file_path="mydata.json")
+    >>> y == x
+    True
+
+    >>> j = x.to_json(fullcopy=True)
+    >>> j
+    {
+    "_mapping_encoded": {
+        "'total'": 6,
+        "'usergroup'": "Knights of Ni"    },
+    "_aliases_encoded": {},
+    "_vars": {}
+    }
+
+    >>> y = CleverDict.from_json(j)
+    >>> y == x
+    True
 
 ## 8. THE AUTO-SAVE FEATURE
-You can set pretty much any function to be run automatically when a `CleverDict` value is *created or changed* for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...  You just need to overwrite the `CleverDict.save` method with your own one:
 
-    >>> CleverDict.save = your_save_function
+Following the "*batteries included*" philosophy, we've included two common autosave/autodelete options which will save your `CleverDict` data to the recommended 'Settings' folder of whichever Operating System you're using:
 
-Similarly the `CleverDict.delete` method is called automatically when an attribute or value is *deleted*.  Like `.save`, it does nothing by default, but you can overwrite it with your own function e.g. for popping up a confirmation request or notification, creating a backup before deleting a record from your database, config file, cloud storage etc.
+---
 
-    >>> CleverDict.delete = your_delete_function
-
-Following the "*batteries included*" philosophy, we've included a powerful implementation of this feature covering TWO very common use cases:
-
-**AUTOSAVE TO JSON FILE**
+**BUILT-IN AUTOSAVE #1: DICTIONARY DATA ONLY**
 
 
     >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
 
-    >>> x.autosave("json")
-    # You can also use .autosave("jsonsilent") to suppress the confirmation message.
+    >>> x.autosave()
 
     ⚠ Autosaving to:
     C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
 
     >>> x.Prognosis = "Not good"
 
-    ✓ .Prognosis updated in:
-      C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
+If you browse the json file (a simple click on the Terminal output if you've enable this in some IDEs), you should see `.Prognosis` has been saved along with any other new/changed values.  Any values you delete will be automatically removed.
+
+---
+**BUILT-IN AUTOSAVE #2: FULL COPY**
+
+In **Section 7** you saw how you can use `.to_json(fullcopy=True)` to create a fully reconstructable image of your `CleverDict` as a JSON string or file.  You can set this as your autosave/autodelete method using the same simple syntax:
+
+    >>> x.autosave(fullcopy=True)
+
+With this method all aliases (in `_aliases`) and directly set attributes (in `_vars`) will be saved whenever attributes are created, changed, or deleted as well the main dictionary data.
+
+---
+
+
+In both cases the file path is stored as `.save_path` using `.setattr_direct()` which you read about above (unless you skipped or fell asleep!).
+
+    >>> x.save_path
+    WindowsPath('C:/Users/Peter/AppData/Roaming/CleverDict/2021-01-20-15-03-54-30.json')
+
+To disable autosave/autodelete activity just enter:
 
     >>> x.autosave("off")
 
@@ -295,33 +319,25 @@ Following the "*batteries included*" philosophy, we've included a powerful imple
     ⓘ Previous updates saved to:
        C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
 
-In both cases you'll notice `CleverDict` helpfully created a save file that by default:
-
-- Included a timestamp, hopefully making it unique (enough) for the majority of uses
-- Was saved to the recommended Settings folder of your particular Operating System.
-
-The path to your save file is cunningly stored using `.setattr_direct` (see above) as `.save_path`:
-
-    >>> x.save_path
-    WindowsPath('C:/Users/Peter/AppData/Roaming/CleverDict/2021-01-20-15-03-54-30.json')
-
-If you want to restore the default "no action" behaviour of `.save` or `.delete` you can make use of the `.autosave` helper function:
-
-    >>> x.autosave("off")
-
 Or for finer control:
 
     >>> CleverDict.save = CleverDict.original_save
     >>> CleverDict.delete = CleverDict.original_delete
 
 
-**NB**: The `.save` and `.delete` methods are *class* methods, so changing `CleverDict.save` will apply the new `.save` method to ***all*** previously created `CleverDict` objects as well as future ones.
-
-
 ## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
+
+You can set pretty much any function to be run **automatically** when a `CleverDict` value is *created or changed*, for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...  You just need to overwrite the `CleverDict.save` method with your own one:
+
+    >>> CleverDict.save = your_save_function
+
+Similarly the `CleverDict.delete` method is called automatically when an attribute or value is *deleted*.  Like `.save`, it does nothing by default, but you can overwrite it with your own function e.g. for popping up a confirmation request or notification, creating a backup before deleting a record from your database, config file, cloud storage etc.
+
+    >>> CleverDict.delete = your_delete_function
+
 When writing your own `save` function, you'll need to specify three arguments as shown in the following example:
 
-    >>> def save(self, name, value):
+    >>> def your_save_function(self, name, value):
             print(f" ⓘ  .{name} (object type: {self.__class__.__name__}) = {value} {type(value)}")
 
 * **self**: because we're dealing with objects and classes...
@@ -329,21 +345,7 @@ When writing your own `save` function, you'll need to specify three arguments as
 * **value**: anything
 
 
-If you want to specify different `.save` or `.delete` behaviours for different objects, you can use the `.setattr_direct()` method to overwrite the original `.save` and `.delete` without adding these functions to your data dictionary:
-
-    >>> def my_autosave_function(key, value):
-    ...    print("Ni!")
-
-    >>> x = CleverDict({7: "Seven"})
-    >>> x.setattr_direct("save", my_autosave_function)
-    >>> x
-    CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={'save': <function my_autosave_function at 0x000002186CFBF040>})
-
-And restore the original `.save` or `.delete` method with:
-
-    >>> x.setattr_direct("save", CleverDict.save)
-
-Alternatively you might prefer to create subclasses that inherit from `CleverDict` and set a different `.save` function for each subclass e.g.:
+The `.save()` and `.delete()` methods are *class* methods, so changing `CleverDict.save` will apply the new `.save()` method to ***all*** previously created `CleverDict` objects as well as future ones.  If you want to specify different behaviours for different objects, you can create subclasses that inherit from `CleverDict`, then set a different `.save()` or `.delete()` function for each subclass e.g.:
 
     >>> class Type1(CleverDict): pass
     >>> Type1.save = my_save_function1
@@ -351,7 +353,7 @@ Alternatively you might prefer to create subclasses that inherit from `CleverDic
     >>> class Type2(CleverDict): pass
     >>> Type2.save = my_save_function2
 
-But READ ON if you want to subclass `CleverDict`...
+But READ ON if you decide to subclass `CleverDict`...
 
 ## 10. SUBCLASSING
 
@@ -373,6 +375,18 @@ In the example above we created a simple class variable `.index` to keep a list 
     >>> x.info()
     Movie:
         self['title'] == self.title == 'The Wizard of Oz"
+
+You could also over-write the `.save()` method and create an `.index` attribute for example:
+
+    class SaveDict(CleverDict):
+        def __init__(self, *args, **kwargs):
+            self.setattr_direct('index', [])
+            super().__init__(*args, **kwargs)
+
+        def save(self, name, value):
+            self.index.append((name, value))
+
+> NB: `.append()` does not register as 'setting' a `CleverDict` value and so does NOT trigger the `.save()` method itself (thankfully) otherwise we'd in a whole world of recursion pain...
 
 ## 11. CONTRIBUTING
 

@@ -273,8 +273,7 @@ class Test_Misc:
         d["7"] = "zeven"
         json_data = d.to_json()
         result = CleverDict.from_json(json_data)
-        assert result == d        
-
+        assert result == d
         file_path = Path(tmpdir) / "tmp.txt"
         d.to_json(file_path=file_path)
         result = CleverDict.from_json(file_path=file_path)
@@ -286,6 +285,25 @@ class Test_Misc:
         with pytest.raises(ValueError):
             CleverDict.from_json(json_data=json_data, file_path=file_path)
 
+    def test_never_save(self):
+        """ CleverDict.never_save lists aliases and keys which should never be
+        converted to json or saved including:
+
+        password
+        save_path
+        _aliases
+        """
+        x = CleverDict({"password": "Top Secret", "userid": "Michael Palin"})
+        x.add_alias("password", "keyphrase")
+        x.autosave()
+        path = x.save_path
+        j = x.to_json()
+        l = x.to_list()
+        lines = x.to_lines()
+        assert "password" not in [j, l, lines]
+        assert "Top Secret" not in [j, l, lines]
+        assert "auto_save" not in [j, l, lines]
+        assert "_aliases" not in [j, l, lines]
 
     def test_to_and_from_json_1(self):
         """ It should be possible to completely reconstruct a CleverDict
@@ -293,7 +311,7 @@ class Test_Misc:
         the dictionary) after .to_json followed by .from_json """
         d = CleverDict({"one": "een"})
         d.add_alias("one", "ONE")
-        j = d.to_json()
+        j = d.to_json(fullcopy=True)
         new_d = CleverDict.from_json(j)
         assert new_d == d
 
@@ -320,11 +338,44 @@ class Test_Misc:
         by .from_json """
         d = CleverDict({"number": 1})
         d.add_alias("number", "Number")
-        j = d.to_json()
+        j = d.to_json(fullcopy=True)
         new_d = CleverDict.from_json(j)
         assert d.number == d.Number == new_d.number == new_d.Number
         assert example_user_code(d) == 2
         assert example_user_code(new_d) == 2
+
+    def test_to_and_from_json_4(self):
+        """
+        Attributes created with setattr_direct are saved with fullcopy=True
+        """
+        d = CleverDict({1:2, 3:4,0:5,"string":6})
+        d.setattr_direct('extra', 42)
+        j = d.to_json(fullcopy=True)
+        new_d = CleverDict.from_json(j)
+        assert new_d.extra == 42
+
+    def test_to_and_from_json_5(self):
+        """
+        Aliases created with add_alias are saved with fullcopy=True
+        """
+        d = CleverDict({1:2, 3:4,0:5,"string":6})
+        d.add_alias(3, 'nul')
+        j = d.to_json(fullcopy=True)
+        new_d = CleverDict.from_json(j)
+        assert new_d.nul == 4
+
+    def test_default_to_from_json(self):
+        """Only data dictionary should be copied with .to_json() by default"""
+        d = CleverDict({"1":2, "3":4,"0":5,"string":6})
+        d.setattr_direct('extra', 42)
+        d.add_alias("3", 'nul')
+        j = d.to_json()
+        new_d = CleverDict.from_json(j)
+        assert new_d.items() == d.items()
+        with pytest.raises(AttributeError):
+            new_d.nul
+        with pytest.raises(KeyError):
+            new_d['extra']
 
     def test_get_default_settings_path(self):
         path = CleverDict.get_default_settings_path()
@@ -334,7 +385,6 @@ class Test_Misc:
         with open(path, "r") as file:
             assert file.read() == info
         path.unlink()
-
         assert CleverDict.get_default_settings_path() != path  # when called a second time, should be different
 
     def test_get_app_dir(self):
@@ -398,11 +448,11 @@ class Test_Internal_Logic:
         Most unicode letters are valid in attribute names
         """
         x = CleverDict({"ветчина_и_яйца$a": "ham and eggs"})
-        x.ве = "be"
-        x["1ве"] = "1be"
+        x.ве = "ve"
+        x["1ве"] = "1ve"
         assert x.ветчина_и_яйца_a == "ham and eggs"
-        assert x.ве == "be"
-        assert x._1ве == "1be"
+        assert x.ве == "ve"
+        assert x._1ве == "1ve"
 
     def test_True_False_None_functionality(self):
         """
@@ -477,6 +527,7 @@ class Test_Internal_Logic:
         assert x == CleverDict({0: 2, 1: 0, 2: 0, "a": 0, "what?": 0, "return": 0, "c": 3})
 
     def test_del(self):
+        """ __delattr__ should delete dict items regardless of alias """
         x = CleverDict()
         x[1] = 1
         del x[1]
@@ -494,6 +545,15 @@ class Test_Internal_Logic:
             del x[1]
         with pytest.raises(AttributeError):
             del x._1
+
+    def test_del_with_setattr_direct(self):
+        """ __delattr__ should delete attributes created with setattr_direct"""
+        x = CleverDict()
+        x.setattr_direct("direct_variable", "direct_value")
+        assert hasattr(x, "direct_variable")
+        del x.direct_variable
+        assert not hasattr(x, "direct_variable")
+
 
     def testget_key(self):
         x = CleverDict.fromkeys(("a", 0, 1, "what?"), 1)
