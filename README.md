@@ -18,7 +18,7 @@
 
 No more slavishly writing your own "save" or "update" function and trying to remember to call it manually every... single... time... values change (or *might* change).
 
-The other main feature of `CleverDict` is that it plays nicely with JSON and allows additional **aliases** which map to the original dictionary keys.  This is really handy for shortcuts, taking an API response and making it play nicely with your own data structures, local language support, and more.
+The other main feature of `CleverDict` is that it plays nicely with JSON and allows additional **aliases** and mappings back to the original dictionary keys.  This is really handy for shortcuts, taking an API response and making it play nicely with your own data structures, local language support, and more.
 
 If you just want to understand the core features of `CleverDict`, please read up to the end of **Section 4**.  `CleverDicct` has quite a few advanced features and deals with subtle "edge cases" which are dealt with more thoroughly in subsequent Sections, but don't be daunted!  We've done the deep thinking so you don't have to... hopefully...
 
