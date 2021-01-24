@@ -1,6 +1,27 @@
 # CleverDict
+<p align="center">
+    <a href="#Contribution" title="Contributions are welcome"><img src="https://img.shields.io/badge/contributions-welcome-green.svg"></a>
+    <a href="https://github.com/pfython/cleverdict/releases" title="CleverDict"><img src="https://img.shields.io/github/release-date/pfython/cleverdict?color=green&label=updated"></a>
+    <a href="https://twitter.com/@appawsom" title="Follow us on Twitter"><img src="https://img.shields.io/twitter/follow/appawsom.svg?style=social&label=Follow"></a>
+</p>
 
 ![cleverdict cartoon](https://raw.githubusercontent.com/PFython/cleverdict/master/cleverdict%20cartoon.png)
+
+## >CONTENTS
+
+1. [OVERVIEW](#1.-OVERVIEW)
+2. [INSTALLATION](#2.-INSTALLATION)
+3. [BASIC USE](#3.-BASIC-USE)
+4. [OTHER EASY WAYS TO IMPORT/EXPORT DATA](#4.-OTHER-EASY-WAYS-TO-IMPORT/EXPORT-DATA)
+5. [ATTRIBUTE NAMES AND ALIASES](#5.-ATTRIBUTE-NAMES-AND-ALIASES)
+6. [DEEPER DIVE INTO ATTRIBUTE NAMES](#6.-DEEPER-DIVE-INTO-ATTRIBUTE-NAMES)
+7. [SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM](#7.-SETTING-AN-ATTRIBUTE-WITHOUT-CREATING-A-DICTIONARY-ITEM)
+8. [THE AUTO-SAVE FEATURE](#8.-THE-AUTO-SAVE-FEATURE)
+9. [CREATING YOUR OWN AUTO-SAVE FUNCTION](#9.-CREATING-YOUR-OWN-AUTO-SAVE-FUNCTION)
+10. [SUBCLASSING / INHERITING](#10.-SUBCLASSING-/-INHERITING)
+11. [CONTRIBUTING](#11.-CONTRIBUTING)
+12. [CREDITS](#12.-CREDITS)
+
 
 ## 1. OVERVIEW
 
@@ -177,6 +198,7 @@ And you can import/export line ("`\n`") delimited strings or files using `.from_
 
     >>> x.to_lines(file_path="lines.txt", start_at=1)
 
+
 ## 5. ATTRIBUTE NAMES AND ALIASES
 
 By default `CleverDict` tries to find valid attribute names for dictionary keys which would otherwise fail.  This includes keywords, null strings, most punctuation marks, and keys starting with a numeral.  So for example `7` (integer) becomes `"_7"` (string):
@@ -282,6 +304,7 @@ This gives you a neat way of fully saving `CleverDict` objects with all mappings
 
 This even solves the pesky problem of `json.dumps()` converting numeric keys to strings e.g. `{1: "one"}` to `{"1": "one"}`.  By recording the mappings as part of the JSON, `CleverDict` is able to remember whether your initial key was numeric or a string.  Niiiiice.
 
+
 ## 8. THE AUTO-SAVE FEATURE
 
 Following the "*batteries included*" philosophy, we've included not one but **two** powerful autosave/autodelete options which, when activated, will save your `CleverDict` data to the recommended 'Settings' folder of whichever Operating System you're using:
@@ -364,7 +387,8 @@ The `.save()` and `.delete()` methods are *class* methods, so changing `CleverDi
 
 And talking of subclasses...
 
-## 10. SUBCLASSING / INHERITING FROM `CleverDict`
+
+## 10. SUBCLASSING / INHERITING
 
 When you create a subclass of `CleverDict` remember to call `super().__init__()` *before* trying to set any further class or object attributes, otherwise you'll run into trouble:
 
@@ -396,6 +420,7 @@ Alternatively, you could  over-write the `.save()` method and create an `.index`
             self.index.append((name, value))
 
 > NB: `.append()` does not register as 'setting' a `CleverDict` value and so does NOT trigger the `.save()` method itself (thankfully) otherwise we'd in a whole world of recursion pain...
+
 
 ## 11. CONTRIBUTING
 
