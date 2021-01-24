@@ -1,6 +1,6 @@
 # CleverDict
 
-![cleverdict logo](https://raw.githubusercontent.com/PFython/cleverdict/issues-and-enhancements/cleverdict.png)
+![cleverdict cartoon](https://raw.githubusercontent.com/PFython/cleverdict/master/cleverdict%20cartoon.png)
 
 ## 1. OVERVIEW
 
