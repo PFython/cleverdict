@@ -5,6 +5,9 @@
     <a href="https://pepy.tech/project/cleverdict"><img alt="Downloads" src="https://pepy.tech/badge/cleverdict"></a>
     <a href="#Contribution" title="Contributions are welcome"><img src="https://img.shields.io/badge/contributions-welcome-green.svg"></a>
     <a href="https://github.com/pfython/cleverdict/releases" title="CleverDict"><img src="https://img.shields.io/github/release-date/pfython/cleverdict?color=green&label=updated"></a>
+    <img alt="PyPI - License" src="https://img.shields.io/pypi/l/cleverdict">
+    <img alt="PyPI - Status" src="https://img.shields.io/pypi/status/cleverdict">
+    <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/pfython/cleverdict">
     <a href="https://twitter.com/@appawsom" title="Follow us on Twitter"><img src="https://img.shields.io/twitter/follow/appawsom.svg?style=social&label=Follow"></a>
 </p>
 
