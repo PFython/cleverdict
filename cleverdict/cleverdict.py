@@ -173,6 +173,10 @@ class CleverDict(dict):
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
+        # Prevent over-writing class variables when first instance is created:
+        for attr in ("original_save", "original_delete"):
+            if not hasattr(CleverDict, attr):
+                setattr(CleverDict, attr, getattr(self, attr.split("_")[-1]))
 
 
     def autosave(self, fullcopy=False, silent=False):
@@ -191,13 +195,16 @@ class CleverDict(dict):
         """
         if fullcopy == "off":
             try:
+                # self.setattr_direct("save", CleverDict.original_save)
+                # self.setattr_direct("delete", CleverDict.original_delete)
                 CleverDict.save = CleverDict.original_save
                 CleverDict.delete = CleverDict.original_delete
-                del self.save_path
                 if not silent:
                     print("\n ⚠  Autosave disabled.")
                     print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")
-            except AttributeError:
+                del self.save_path
+            except AttributeError as E:
+                print(f"\n ⚠  Error with autosave(fullcopy=off): {E}")
                 # Attempting to turn autosave off before it was ever enabled
                 return
         else:
@@ -207,12 +214,15 @@ class CleverDict(dict):
             if not path.is_file():
                 self.create_save_file()
             if fullcopy:
+                # self.setattr_direct("save", CleverDict._auto_save_fullcopy)
                 CleverDict.save = CleverDict._auto_save_fullcopy
             else:
+                # self.setattr_direct("save", CleverDict._auto_save_data)
                 CleverDict.save = CleverDict._auto_save_data
             # Save and delete events trigger a call to the same method:
+            # self.setattr_direct("delete", CleverDict._auto_delete)
             CleverDict.delete = CleverDict._auto_delete
-            self.save(key=None, value=None)
+            self.save(name=None, value=None)
             if not silent:
                 print(f"\n ⚠  Autosaving to:\n  {path}\n")
 
@@ -490,7 +500,7 @@ class CleverDict(dict):
         """
         pass
 
-    def delete(self, name=None):
+    def delete(self, name=None, value=None):
         """
         Called every time a CleverDict value is deleted.  Overwrite with your
         own custome delete() method e.g. to automatically delete values from
@@ -572,7 +582,8 @@ class CleverDict(dict):
         None
         """
         super().__setattr__(name, value)
-        self.save()
+        if name not in ["save", "delete"]:
+            self.save()
 
     def get_key(self, name):
         """
