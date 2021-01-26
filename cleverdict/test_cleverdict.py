@@ -939,15 +939,23 @@ class Test_README_examples:
         assert y == x
 
     def test_AUTOSAVE_1(self):
+        def get_data(path):
+            with open(path, "r") as file:
+                data = file.read()
+            return data
         x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
         x.autosave()
         assert getattr(x, "save_path")
-        path = x.save_path
         x.Prognosis = "Not good"
-        with open(path, "r") as file:
-            data = file.read()
-        assert '"Prognosis": "Not good"' in data
+        assert '"Prognosis": "Not good"' in get_data(x.save_path)
+        path = x.save_path
         x.autosave(fullcopy=True)
+        assert path != x.save_path  # New file with new autosave instruction
+        path = x.save_path
+        x.add_alias("Patient Name", "name")
+        assert '"\'name\'": "Patient Name"' in get_data(x.save_path)
+        x.setattr_direct("internal_code", "xyz123")
+        assert '"internal_code": "xyz123"' in get_data(x.save_path)
         x.autosave("off")
         assert not hasattr(x, "save_path")
         assert Path(path).is_file()

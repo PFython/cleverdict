@@ -178,6 +178,7 @@ class CleverDict(dict):
             if not hasattr(CleverDict, attr):
                 setattr(CleverDict, attr, getattr(self, attr.split("_")[-1]))
 
+
     def autosave(self, fullcopy=False, silent=False):
         """Toggles autosave to a config file.
 
@@ -194,13 +195,16 @@ class CleverDict(dict):
         """
         if fullcopy == "off":
             try:
+                # self.setattr_direct("save", CleverDict.original_save)
+                # self.setattr_direct("delete", CleverDict.original_delete)
                 CleverDict.save = CleverDict.original_save
                 CleverDict.delete = CleverDict.original_delete
-                del self.save_path
                 if not silent:
                     print("\n ⚠  Autosave disabled.")
                     print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")
-            except AttributeError:
+                del self.save_path
+            except AttributeError as E:
+                print(f"\n ⚠  Error with autosave(fullcopy=off): {E}")
                 # Attempting to turn autosave off before it was ever enabled
                 return
         else:
@@ -210,12 +214,15 @@ class CleverDict(dict):
             if not path.is_file():
                 self.create_save_file()
             if fullcopy:
+                # self.setattr_direct("save", CleverDict._auto_save_fullcopy)
                 CleverDict.save = CleverDict._auto_save_fullcopy
             else:
+                # self.setattr_direct("save", CleverDict._auto_save_data)
                 CleverDict.save = CleverDict._auto_save_data
             # Save and delete events trigger a call to the same method:
+            # self.setattr_direct("delete", CleverDict._auto_delete)
             CleverDict.delete = CleverDict._auto_delete
-            self.save(key=None, value=None)
+            self.save(name=None, value=None)
             if not silent:
                 print(f"\n ⚠  Autosaving to:\n  {path}\n")
 
@@ -226,7 +233,7 @@ class CleverDict(dict):
             for al in all_aliases(name):
                 self._add_alias(name, al)
         super().__setitem__(name, value)
-        self.save(name, value)  # Call an overwriteable user defined method
+        self.save(name=name, value=value)
 
     __setitem__ = __setattr__
 
@@ -246,7 +253,7 @@ class CleverDict(dict):
         for ak, av in list(self._aliases.items()):
             if av == key:
                 del self._aliases[ak]
-        self.delete(key)  # Call an overwriteable user defined method
+        self.delete(name=key)  # Call an overwriteable user defined method
 
     def __delattr__(self, k):
         try:
@@ -483,7 +490,7 @@ class CleverDict(dict):
         else:
             return json_str
 
-    def save(self, name, value):
+    def save(self, name=None, value=None):
         """
         Called every time a CleverDict value is created or change.
         Overwrite with your own custome save() method e.g. to automatically
@@ -493,7 +500,7 @@ class CleverDict(dict):
         """
         pass
 
-    def delete(self, name):
+    def delete(self, name=None, value=None):
         """
         Called every time a CleverDict value is deleted.  Overwrite with your
         own custome delete() method e.g. to automatically delete values from
@@ -503,7 +510,7 @@ class CleverDict(dict):
         """
         pass
 
-    def _auto_save_data(self, key=None, value=None):
+    def _auto_save_data(self, name=None, value=None):
         """
         Calls _auto_save_json to save a copy of the data dictionary (only) in
         JSON format, without any mappings, aliases, and directly set attributes.
@@ -518,7 +525,7 @@ class CleverDict(dict):
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path)
 
-    def _auto_save_fullcopy(self, key=None, value=None):
+    def _auto_save_fullcopy(self, name=None, value=None):
         """
         Calls _auto_save_json to save a full copy of the CleverDict instance in
         JSON format, in with all mappings, aliases, and directly set attributes.
@@ -527,9 +534,9 @@ class CleverDict(dict):
         overwrites the default .save() method and is called every time a value
         changes or is created.
         """
-        self._auto_save_json(key=key, value=value, fullcopy=True)
+        self._auto_save_json(name=name, value=value, fullcopy=True)
 
-    def _auto_save_json(self, key=None, value=None, fullcopy=False):
+    def _auto_save_json(self, name=None, value=None, fullcopy=False):
         """
         If .autosave("json") is called on an object, this overwrites
         the default .save() method and is called every time a value changes or
@@ -545,15 +552,15 @@ class CleverDict(dict):
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
 
-    def _auto_delete(self, key=None):
-        """Currently just calls CleverDict.save but could be overwritten with
+    def _auto_delete(self, name=None):
+        """Currently just calls self.save but could be overwritten with
         something more sophisticated.
 
         If .autosave() is called on an object, this method overwrites the
         default .delete() method and is called every time a value changes or is
         created.
         """
-        CleverDict.save(self, key=key)
+        self.save(self, name=name)
 
     def setattr_direct(self, name, value):
         """
@@ -575,6 +582,8 @@ class CleverDict(dict):
         None
         """
         super().__setattr__(name, value)
+        if name not in ["save", "delete"]:
+            self.save()
 
     def get_key(self, name):
         """
@@ -647,6 +656,7 @@ class CleverDict(dict):
         for al in alias:
             for name in all_aliases(al):
                 self._add_alias(key, name)
+        self.save()
 
     def delete_alias(self, alias):
         """
@@ -683,6 +693,7 @@ class CleverDict(dict):
                     alx in list(self._aliases.keys())[1:]
                 ):  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
+        self.save()
 
     def info(self, as_str=False, ignore=None):
         """
