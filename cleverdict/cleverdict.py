@@ -380,7 +380,7 @@ class CleverDict(dict):
             ignore = set()
         ignore = set(ignore) | {"_aliases", "ignore"}
         to_save = self.filtered_mapping(ignore)
-        lines = "\n".join(itertools.islice(to_save.values(), start_at-1, None))
+        lines = "\n".join(itertools.islice(to_save.values(), start_at - 1, None))
         if not file_path:
             return lines
         with open(file_path, "w", encoding="utf-8") as file:
@@ -775,7 +775,7 @@ def all_aliases(name):
 
 def get_app_dir(app_name, roaming=True, force_posix=False):
     """
-    this is a self contained copy of click.get_app_dir
+    This is a self contained copy of click.get_app_dir
     """
     import sys
 
@@ -806,19 +806,3 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
         os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
         _posixify(app_name),
     )
-
-
-if __name__ == "__main__":
-    x = CleverDict()
-    print(x)
-    pass
-    x = CleverDict({"password": "Top Secret", "userid": "Michael Palin"})
-    x.add_alias("password", "keyphrase")
-    x.autosave()
-    path = x.save_path
-    j = x.to_json()
-    l = x.to_list()
-    lines = x.to_lines()
-    print(x)
-    print(dir(x))
-    delattr(x, "save_path")

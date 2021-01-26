@@ -236,9 +236,15 @@ class Test_Misc:
         del result[7]
         result["7"] = "zeven"
         assert CleverDict.from_json(d.to_json()) == result
-        assert CleverDict.from_json(d.to_json(ignore=["one"])) == eval(result.__repr__(ignore=["one"]))
-        assert CleverDict.from_json(d.to_json(ignore=["one", "two"])) == eval(result.__repr__(ignore=["one", "two"]))
-        assert CleverDict.from_json(d.to_json(ignore=["one", 7])) == eval(result.__repr__(ignore=["one", "7"]))
+        assert CleverDict.from_json(d.to_json(ignore=["one"])) == eval(
+            result.__repr__(ignore=["one"])
+        )
+        assert CleverDict.from_json(d.to_json(ignore=["one", "two"])) == eval(
+            result.__repr__(ignore=["one", "two"])
+        )
+        assert CleverDict.from_json(d.to_json(ignore=["one", 7])) == eval(
+            result.__repr__(ignore=["one", "7"])
+        )
 
     def test_from_lines(self, tmpdir):
         d0 = CleverDict()
@@ -667,6 +673,7 @@ def example_save_function(self, key, value):
     with open("example.log", "a") as file:
         file.write(output + "\n")
 
+
 def dummy_save_function(self, *args, **kwargs):
     pass
 
@@ -765,93 +772,128 @@ class Test_Delete_Functionality:
         CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         CleverDict.save = dummy_save_function
 
+
 class Test_README_examples:
     def test_BASIC_USE_1(self):
-        x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
-        assert x.total == x['total'] == 6
-        assert x.usergroup == x['usergroup'] == 'Knights of Ni'
+        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
+        assert x.total == x["total"] == 6
+        assert x.usergroup == x["usergroup"] == "Knights of Ni"
+
     def test_BASIC_USE_2(self):
-        x['life'] = 42
+        x["life"] = 42
         x.life += 1
-        assert x['life'] == 43
-        del x['life']
+        assert x["life"] == 43
+        del x["life"]
         with pytest.raises(AttributeError):
             x.life
+
     def test_BASIC_USE_3(self):
-        assert 'to_list' in dir(CleverDict)
-        x = CleverDict({'to_list': "Some information"})
-        assert x['to_list'] == 'Some information'
+        assert "to_list" in dir(CleverDict)
+        x = CleverDict({"to_list": "Some information"})
+        assert x["to_list"] == "Some information"
         assert str(type(x.to_list)) == "<class 'method'>"
+
     def test_BASIC_USE_4(self):
         assert x.to_json() == '{\n    "to_list": "Some information"\n}'
         x.to_json(file_path="mydata.json")
         assert Path("mydata.json").is_file()
         with open("mydata.json", "r", encoding="utf-8") as file:
-                data = json.load(file)
+            data = json.load(file)
         assert x == CleverDict(data)
         os.remove("mydata.json")
+
     def test_BASIC_USE_5(self):
         x = CleverDict({1: "one", 2: "two"})
-        assert x.to_list() == [(1, 'one'), (2, 'two')]
+        assert x.to_list() == [(1, "one"), (2, "two")]
+
     def test_IMPORT_EXPORT_1(self):
-        x = CleverDict(created = "today", review = "tomorrow")
-        assert x.created == 'today'
-        assert x['review'] == 'tomorrow'
+        x = CleverDict(created="today", review="tomorrow")
+        assert x.created == "today"
+        assert x["review"] == "tomorrow"
+
     def test_IMPORT_EXPORT_2(self):
         x = CleverDict([("value1", "one"), ["value2", "two"], ("value3", "three")])
-        assert x.value1 == 'one'
-        assert x['value2'] == 'two'
-        assert getattr(x, "value3") == 'three'
+        assert x.value1 == "one"
+        assert x["value2"] == "two"
+        assert getattr(x, "value3") == "three"
+
     def test_IMPORT_EXPORT_3(self):
         x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
-        assert repr(x) == "CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})"
+        assert (
+            repr(x)
+            == "CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})"
+        )
+
     def test_IMPORT_EXPORT_4(self):
         x = CleverDict({1: "one", 2: "two"})
         y = CleverDict(x)
-        assert repr(y) == "CleverDict({1: 'one', 2: 'two'}, _aliases={'_1': 1, '_True': 1, '_2': 2}, _vars={})"
-        assert list(y.items()) == [(1, 'one'), (2, 'two')]
+        assert (
+            repr(y)
+            == "CleverDict({1: 'one', 2: 'two'}, _aliases={'_1': 1, '_True': 1, '_2': 2}, _vars={})"
+        )
+        assert list(y.items()) == [(1, "one"), (2, "two")]
+
     def test_IMPORT_EXPORT_5(self):
-        class X: pass
-        a = X(); a.name = "Percival"
+        class X:
+            pass
+
+        a = X()
+        a.name = "Percival"
         x = CleverDict(vars(a))
         assert repr(x) == "CleverDict({'name': 'Percival'}, _aliases={}, _vars={})"
+
     def test_IMPORT_EXPORT_6(self):
-        assert x.to_dict() == {'name': 'Percival'}
+        assert x.to_dict() == {"name": "Percival"}
+
     def test_IMPORT_EXPORT_7(self):
         json_data = '{"None": null}'
         x = CleverDict.from_json(json_data)
-        assert repr(x) == "CleverDict({'None': None}, _aliases={'_None': 'None'}, _vars={})"
+        assert (
+            repr(x)
+            == "CleverDict({'None': None}, _aliases={'_None': 'None'}, _vars={})"
+        )
         x.to_json(file_path="mydata.json")
         y = CleverDict.from_json(file_path="mydata.json")
         assert x == y
+
     def test_IMPORT_EXPORT_8(self):
-        lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
+        lines = "This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
         x = CleverDict.from_lines(lines, start_at=1)
-        assert x.info("as_srt") == "CleverDict:\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'This is my first line'\n    x[2] == x['_2'] == x._2 == 'My second...'\n    x[3] == x['_3'] == x._3 == ''\n    x[4] == x['_4'] == x._4 == ''\n    x[5] == x['_5'] == x._5 == ''\n    x[6] == x['_6'] == x._6 == ''\n    x[7] == x['_7'] == x._7 == 'My LAST'\n    x[8] == x['_8'] == x._8 == ''"
-        assert x.to_lines(start_at=7) == 'My LAST\n'
+        assert (
+            x.info("as_srt")
+            == "CleverDict:\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'This is my first line'\n    x[2] == x['_2'] == x._2 == 'My second...'\n    x[3] == x['_3'] == x._3 == ''\n    x[4] == x['_4'] == x._4 == ''\n    x[5] == x['_5'] == x._5 == ''\n    x[6] == x['_6'] == x._6 == ''\n    x[7] == x['_7'] == x._7 == 'My LAST'\n    x[8] == x['_8'] == x._8 == ''"
+        )
+        assert x.to_lines(start_at=7) == "My LAST\n"
         x.to_lines(file_path="lines.txt", start_at=1)
         with open("lines.txt", "r") as file:
             data = file.read()
         assert data == lines
         os.remove("lines.txt")
+
     def test_IMPORT_EXPORT_9(self):
-        lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
+        lines = "This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
         x = CleverDict.from_lines(lines, start_at=1)
         x.password = "Top Secret - don't ever save to file!"
-        assert x.to_lines(start_at=7) == "My LAST\n\nTop Secret - don't ever save to file!"
-        assert x.to_lines(start_at=7, ignore=["password"]) == 'My LAST\n'
+        assert (
+            x.to_lines(start_at=7) == "My LAST\n\nTop Secret - don't ever save to file!"
+        )
+        assert x.to_lines(start_at=7, ignore=["password"]) == "My LAST\n"
+
     def test_NAMES_AND_ALIASES_1(self):
         x = CleverDict({7: "Seven"})
-        assert x._7 == 'Seven'
+        assert x._7 == "Seven"
         assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})"
         x.add_alias(7, "NumberSeven")
         x.add_alias(7, "zeven")
-        assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7, 'NumberSeven': 7, 'zeven': 7}, _vars={})"
-        assert x.get_aliases() == [7, '_7', 'NumberSeven', 'zeven']
+        assert (
+            repr(x)
+            == "CleverDict({7: 'Seven'}, _aliases={'_7': 7, 'NumberSeven': 7, 'zeven': 7}, _vars={})"
+        )
+        assert x.get_aliases() == [7, "_7", "NumberSeven", "zeven"]
         assert x.info("as_str", ignore=[7]) == "CleverDict:"
         assert x.to_dict(ignore=["zeven"]) == {}
         assert x.to_list(ignore=["zeven"]) == []
-        x.delete_alias(["_7","NumberSeven"])
+        x.delete_alias(["_7", "NumberSeven"])
         assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'zeven': 7}, _vars={})"
         with pytest.raises(AttributeError):
             assert x._7
@@ -859,19 +901,27 @@ class Test_README_examples:
             x.delete_alias([7])
         del x[7]
         assert repr(x) == "CleverDict({}, _aliases={}, _vars={})"
+
     def test_ATTRIBUTE_NAMES_1(self):
-        x = CleverDict(значение = "znacheniyeh: Russian word for 'value'")
+        x = CleverDict(значение="znacheniyeh: Russian word for 'value'")
         assert x.значение == "znacheniyeh: Russian word for 'value'"
+
     def test_ATTRIBUTE_NAMES_2(self):
         with pytest.raises(KeyError):
             x = CleverDict({"one-two": "hypen", "one/two": "forward slash"})
         assert CleverDict({"one-two": "hypen", "one_or_two": "forward slash"})
+
     def test_ATTRIBUTE_NAMES_3(self):
         x = {1: "one", True: "the truth"}
         assert repr(x) == "{1: 'the truth'}"
+
     def test_ATTRIBUTE_NAMES_4(self):
         x = y = z = CleverDict({1: "one", True: "the truth"})
-        assert x.info("as_str") == "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
+        assert (
+            x.info("as_str")
+            == "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
+        )
+
     def test_SETTING_ATTRIBUTES_DIRECTLY_1(self):
         x = CleverDict()
         x.setattr_direct("direct", True)
@@ -881,9 +931,13 @@ class Test_README_examples:
         assert y == x
         os.remove("mydata.json")
         j = x.to_json(fullcopy=True)
-        assert j == '{\n    "_mapping_encoded": {},\n    "_aliases_encoded": {},\n    "_vars": {\n        "direct": true\n    }\n}'
+        assert (
+            j
+            == '{\n    "_mapping_encoded": {},\n    "_aliases_encoded": {},\n    "_vars": {\n        "direct": true\n    }\n}'
+        )
         y = CleverDict.from_json(j)
         assert y == x
+
     def test_AUTOSAVE_1(self):
         x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
         x.autosave()
@@ -900,33 +954,50 @@ class Test_README_examples:
         os.remove(path)
         assert CleverDict.save == CleverDict.original_save
         assert CleverDict.delete == CleverDict.original_delete
+
     def test_YOUR_OWN_AUTOSAVE_1(self):
         def your_save_function(self, name, value):
             """ Custom save function by you """
-            print(f" ⓘ  .{name} (object type: {self.__class__.__name__}) = {value} {type(value)}")
+            print(
+                f" ⓘ  .{name} (object type: {self.__class__.__name__}) = {value} {type(value)}"
+            )
+
         CleverDict.save = your_save_function
         x = CleverDict()
-        assert x.save.__doc__ == ' Custom save function by you '
+        assert x.save.__doc__ == " Custom save function by you "
+
     def test_YOUR_OWN_AUTOSAVE_2(self):
         class Type1(CleverDict):
             def __init__(self, *args, **kwargs):
-                self.setattr_direct('index', [])
+                self.setattr_direct("index", [])
                 super().__init__(*args, **kwargs)
+
             def save(self, name, value):
                 """ Keep a separate 'store' for data in .index """
                 self.index.append((name, value))
+
         x = Type1(data="Useless information")
-        assert x.index == [('data', 'Useless information')]
+        assert x.index == [("data", "Useless information")]
+
     def test_SUBCLASSING_1(self):
         class Movie(CleverDict):
             index = []
+
             def __init__(self, title, **kwargs):
                 super().__init__(**kwargs)
                 self.title = title
                 Movie.index += [self]
+
         x = Movie("The Wizard of Oz")
-        assert repr(Movie.index) == "[Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]"
-        assert x.info("as_str") == "Movie:\n    x['title'] == x.title == 'The Wizard of Oz'"
+        assert (
+            repr(Movie.index)
+            == "[Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]"
+        )
+        assert (
+            x.info("as_str")
+            == "Movie:\n    x['title'] == x.title == 'The Wizard of Oz'"
+        )
+
 
 if __name__ == "__main__":
     pytest.main(["-vv", "-s"])
