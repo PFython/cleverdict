@@ -299,15 +299,14 @@ class Test_Misc:
         x.add_alias("password", "keyphrase")
         x.autosave(silent=True)
         path = x.save_path
-        j = x.to_json()
-        l = x.to_list()
-        #        lines = x.to_lines()  # Ruud this will give the values, not the keys !
-        for output in [j, repr(l)]:
+        lines = x.to_lines()
+        for output in [x.to_json(), repr(x.to_list()), lines]:
             assert "password" not in output
             assert "Top Secret" not in output
             assert "auto_save" not in output
             assert "_aliases" not in output
-            assert "userid" in output
+            if output != lines:
+                assert "userid" in output
         x.autosave(
             "off", silent=True
         )  # Ruud autosave works apparently CleverDict wise. If we do not switch it off, all other CleverDict's will also autosave. And thus many test will fail
