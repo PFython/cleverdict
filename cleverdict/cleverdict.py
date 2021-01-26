@@ -1,4 +1,3 @@
-
 import os
 import json
 import inspect
@@ -266,10 +265,7 @@ class CleverDict(dict):
         if ignore is None:
             ignore = set()
         ignore = set(ignore) | {"_aliases", "never_save"}
-        _mapping = {k: v for k, v in self.items() if k not in ignore}
-        for k, v in self._aliases.items():
-            if k in ignore and v in _mapping:
-                del _mapping[v]
+        _mapping = self.filtered_mapping(ignore)
         _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
@@ -338,7 +334,9 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
-        return [(k,v) for k,v in self.items() if k not in self.never_save]
+        ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        mapping = self.filtered_mapping(ignore)
+        return [(k, v) for k, v in mapping.items()]
 
     @classmethod
     def get_new_save_path(cls):
@@ -356,11 +354,20 @@ class CleverDict(dict):
             dir.mkdir(parents=True)
         return dir / id
 
+    def filtered_mapping(self, ignore):
+        mapping = {k: v for k, v in self.items() if k not in ignore}
+        for k, v in self._aliases.items():
+            if k in ignore and v in mapping:
+                del mapping[v]
+        return mapping
+
     def to_lines(self, file_path=None, start_at=0):
         """
         Creates a line ("\n") delimited object or file using values for lines
         """
-        to_save = {k:v for k,v in self.items() if k not in self.never_save}
+        ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        to_save = self.filtered_mapping(ignore)
+        
         lines = "\n".join(itertools.islice(to_save.values(), start_at, None))
         if not file_path:
             return lines
@@ -386,7 +393,6 @@ class CleverDict(dict):
         index = {k + start_at: v.strip() for k, v in enumerate(lines.split("\n"))}
         return cls(index)
 
-
     @classmethod
     def from_json(cls, json_data=None, file_path=None):
         """
@@ -403,13 +409,13 @@ class CleverDict(dict):
                 data = json.load(file)
         else:
             data = json.loads(json_data)
-        try:
-            _mapping = {eval(k): v for k,v in data["_mapping_encoded"].items()}
-            _aliases = {eval(k): v for k,v in data["_aliases_encoded"].items()}
+        if set(data.keys()) == {"_mapping_encoded", "_aliases_encoded", "_vars"}: 
+            _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
+            _aliases = {eval(k): v for k, v in data["_aliases_encoded"].items()}
             _vars = data["_vars"]
             return cls(_mapping, _aliases=_aliases, _vars=_vars)
-        except KeyError:
-            return(cls(data))
+        else:
+            return cls(data)
 
     def create_save_file(self):
         """
@@ -424,8 +430,6 @@ class CleverDict(dict):
         with open(self.save_path, "w", encoding="utf-8") as file:
             file.write('{"empty": True}')  # Create skeleton .json file
 
-
-
     def to_json(self, file_path=None, fullcopy=False):
 
         """
@@ -437,19 +441,19 @@ class CleverDict(dict):
         file: Save to file if True or filepath
 
         """
-        never_save = set(CleverDict.never_save) | {"_aliases", "never_save"}
-        _mapping = {k: v for k, v in self.items() if k not in never_save}
+        ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        _mapping = self.filtered_mapping(ignore)
+        
         if not fullcopy:
             json_str = json.dumps(_mapping, indent=4)
         else:
-            for k, v in self._aliases.items():
-                if k in never_save and v in _mapping:
-                    del _mapping[v]
             _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
             _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
             _aliases_encoded = {repr(k): v for k, v in _aliases.items()}
-            _vars = {k: v for k, v in vars(self).items() if k not in never_save}
-            json_str = json.dumps({'_mapping_encoded':_mapping_encoded, '_aliases_encoded': _aliases_encoded, '_vars':_vars}, indent=4)
+            _vars = {k: v for k, v in vars(self).items() if k not in ignore}
+            json_str = json.dumps(
+                {"_mapping_encoded": _mapping_encoded, "_aliases_encoded": _aliases_encoded, "_vars": _vars}, indent=4
+            )
         if file_path:
             with open(Path(file_path), "w", encoding="utf-8") as file:
                 file.write(json_str)
@@ -527,7 +531,6 @@ class CleverDict(dict):
         created.
         """
         CleverDict.save(self, key=key)
-
 
     def setattr_direct(self, name, value):
         """
@@ -690,6 +693,7 @@ class CleverDict(dict):
         else:
             print(output)
 
+
 def all_aliases(name):
     """
     Returns all possible aliases for a given name.
@@ -756,4 +760,20 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     if sys.platform == "darwin":
         return os.path.join(os.path.expanduser("~/Library/Application Support"), app_name)
     return os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), _posixify(app_name))
+
+
+if __name__ == "__main__":
+    x = CleverDict()
+    print(x)
+    pass
+    x = CleverDict({"password": "Top Secret", "userid": "Michael Palin"})
+    x.add_alias("password", "keyphrase")
+    x.autosave()
+    path = x.save_path
+    j = x.to_json()
+    l = x.to_list()
+    lines = x.to_lines()
+    print(x)
+    print(dir(x))
+    delattr(x, "save_path")
 
