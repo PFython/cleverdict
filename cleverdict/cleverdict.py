@@ -15,13 +15,14 @@ version 1.8
 ---------------------------
 Added to_json() and from_json()
 Added to_lines() and from_lines()
+Added to_dict() as an alias of filtered_mapping()
 Removed identify_self()
 Reinstated print for autosave (only), but with 'silent' option
 to_json(fullcopy=True) creates JSON that can fully recreate a CleverDict
 to_json(fullcopy=False) creates JSON from data dictionary only
 __delattr__ removes attributes created using setattr_direct
 Dependency on click removed
-Applied ignore=[] to: to_lines, to_list, to_json, __repr__
+Applied ignore=[] to: to_lines, to_list, to_json, info, to_dict, and __repr__
 Auto-delete feature implemented:
 https://github.com/PFython/cleverdict/issues/11
 Auto-save to json file implemented:
@@ -367,6 +368,10 @@ class CleverDict(dict):
                 del mapping[v]
         return mapping
 
+    def to_dict(self, ignore=None):
+        """ Returns a regular dict of the core data dictionary """
+        return self.filtered_mapping(ignore or [])
+
     def to_lines(self, file_path=None, start_at=0, ignore=None):
         """
         Creates a line ("\n") delimited object or file using values for lines
@@ -448,7 +453,9 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore"}
+        ignore = set(ignore) | {"_aliases", "ignore", "save_path"}
+        # save_path is a pathlib object and not serialisable
+        # Also not required as any file created will know its own filename
         _mapping = self.filtered_mapping(ignore)
 
         if not fullcopy:
@@ -677,7 +684,7 @@ class CleverDict(dict):
                 ):  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
-    def info(self, as_str=False):
+    def info(self, as_str=False, ignore=None):
         """
         Prints or returns a string showing variable name equivalence
         and object attribute/dictionary key equivalence.
@@ -694,7 +701,11 @@ class CleverDict(dict):
             ]  # If more than one variable has the same name, use the first in the list
         else:
             id = "x"
-        for k, v in self.items():
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | {"_aliases", "ignore"}
+        mapping = self.filtered_mapping(ignore)
+        for k, v in mapping.items():
             parts = []
             for ak, av in self._aliases.items():
                 if av == k:
