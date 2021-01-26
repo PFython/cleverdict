@@ -189,9 +189,14 @@ CleverDict:
 """
         )
         z = b = a = c = CleverDict.fromkeys(["a"], "A")
-        assert c.info(as_str=True) == "CleverDict:\n    a is b is z\n    a['a'] == a.a == 'A'"
+        assert (
+            c.info(as_str=True)
+            == "CleverDict:\n    a is b is z\n    a['a'] == a.a == 'A'"
+        )
         del a
-        assert c.info(as_str=True) == "CleverDict:\n    b is z\n    b['a'] == b.a == 'A'"
+        assert (
+            c.info(as_str=True) == "CleverDict:\n    b is z\n    b['a'] == b.a == 'A'"
+        )
         del b
         assert c.info(as_str=True) == "CleverDict:\n    z['a'] == z.a == 'A'"
         del z
@@ -288,7 +293,7 @@ class Test_Misc:
             CleverDict.from_json(json_data=json_data, file_path=file_path)
 
     def test_never_save(self):
-        """ CleverDict.never_save lists aliases and keys which should never be
+        """CleverDict.never_save lists aliases and keys which should never be
         converted to json or saved including:
 
         password
@@ -307,14 +312,12 @@ class Test_Misc:
             assert "_aliases" not in output
             if output != lines:
                 assert "userid" in output
-        x.autosave(
-            "off", silent=True
-        )  # Ruud autosave works apparently CleverDict wise. If we do not switch it off, all other CleverDict's will also autosave. And thus many test will fail
+        x.autosave("off", silent=True)
 
     def test_to_and_from_json_1(self):
-        """ It should be possible to completely reconstruct a CleverDict
+        """It should be possible to completely reconstruct a CleverDict
         object, excluding _vars (attributes set directly without updating
-        the dictionary) after .to_json followed by .from_json """
+        the dictionary) after .to_json followed by .from_json"""
         d = CleverDict({"one": "een"})
         d.add_alias("one", "ONE")
         j = d.to_json(fullcopy=True)
@@ -323,8 +326,8 @@ class Test_Misc:
         assert new_d == d
 
     def test_to_and_from_json_2(self):
-        """ Automatically created aliases should be presevered after .to_json
-        followed by .from_json """
+        """Automatically created aliases should be presevered after .to_json
+        followed by .from_json"""
         d = CleverDict({"#1": 1})
         j = d.to_json()
         new_d = CleverDict.from_json(j)
@@ -335,9 +338,9 @@ class Test_Misc:
 
     def test_to_and_from_json_3(self):
         def example_user_code(clever_dict):
-            """ Typical use of CleverDict is aliases to provide interchangeable
+            """Typical use of CleverDict is aliases to provide interchangeable
             attributes.  In this case .number and .Number.  Quite subtle and easy
-            to overlook when debugging """
+            to overlook when debugging"""
             clever_dict.number += 1
             return clever_dict.Number
 
@@ -393,7 +396,9 @@ class Test_Misc:
         with open(path, "r") as file:
             assert file.read() == info
         path.unlink()
-        assert CleverDict.get_new_save_path() != path  # when called a second time, should be different
+        assert (
+            CleverDict.get_new_save_path() != path
+        )  # when called a second time, should be different
 
     def test_get_app_dir(self):
         """
@@ -532,7 +537,9 @@ class Test_Internal_Logic:
         x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
         y = CleverDict({0: 2, "c": 3})
         x.update(y)
-        assert x == CleverDict({0: 2, 1: 0, 2: 0, "a": 0, "what?": 0, "return": 0, "c": 3})
+        assert x == CleverDict(
+            {0: 2, 1: 0, 2: 0, "a": 0, "what?": 0, "return": 0, "c": 3}
+        )
 
     def test_del(self):
         """ __delattr__ should delete dict items regardless of alias """
@@ -727,7 +734,18 @@ class Test_Save_Functionality:
             x["4"] = 11
         except KeyError:
             pass
-        assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
+        assert x.store == [
+            ("a", 1),
+            (2, 2),
+            ("b", 3),
+            ("c", 4),
+            (3, 5),
+            (3, 6),
+            (3, 7),
+            (3, 8),
+            ("_4", 9),
+            ("_4", 10),
+        ]
 
 
 def example_delete_function(self, key):

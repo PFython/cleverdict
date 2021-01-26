@@ -178,7 +178,7 @@ class CleverDict(dict):
                 setattr(CleverDict, attr, getattr(self, attr.split("_")[-1]))
 
     def autosave(self, fullcopy=False, silent=False):
-        """ Toggles autosave to a config file.
+        """Toggles autosave to a config file.
 
         Parameters
         ----------
@@ -266,7 +266,9 @@ class CleverDict(dict):
             ignore = set()
         ignore = set(ignore) | {"_aliases", "never_save"}
         _mapping = self.filtered_mapping(ignore)
-        _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
+        _aliases = {
+            k: v for k, v in self._aliases.items() if k not in self and v in _mapping
+        }
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
@@ -278,7 +280,9 @@ class CleverDict(dict):
         Used by add_alias, __init__ and __setattr__.
         """
         if alias in self._aliases and self._aliases[alias] != name:
-            raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
+            raise KeyError(
+                f"{repr(alias)} already an alias for {repr(self._aliases[alias])}"
+            )
         self._aliases[alias] = name
 
     def update(self, _mapping=(), **kwargs):
@@ -367,7 +371,7 @@ class CleverDict(dict):
         """
         ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
         to_save = self.filtered_mapping(ignore)
-        
+
         lines = "\n".join(itertools.islice(to_save.values(), start_at, None))
         if not file_path:
             return lines
@@ -409,7 +413,7 @@ class CleverDict(dict):
                 data = json.load(file)
         else:
             data = json.loads(json_data)
-        if set(data.keys()) == {"_mapping_encoded", "_aliases_encoded", "_vars"}: 
+        if set(data.keys()) == {"_mapping_encoded", "_aliases_encoded", "_vars"}:
             _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
             _aliases = {eval(k): v for k, v in data["_aliases_encoded"].items()}
             _vars = data["_vars"]
@@ -443,16 +447,25 @@ class CleverDict(dict):
         """
         ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
         _mapping = self.filtered_mapping(ignore)
-        
+
         if not fullcopy:
             json_str = json.dumps(_mapping, indent=4)
         else:
-            _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
+            _aliases = {
+                k: v
+                for k, v in self._aliases.items()
+                if k not in self and v in _mapping
+            }
             _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
             _aliases_encoded = {repr(k): v for k, v in _aliases.items()}
             _vars = {k: v for k, v in vars(self).items() if k not in ignore}
             json_str = json.dumps(
-                {"_mapping_encoded": _mapping_encoded, "_aliases_encoded": _aliases_encoded, "_vars": _vars}, indent=4
+                {
+                    "_mapping_encoded": _mapping_encoded,
+                    "_aliases_encoded": _aliases_encoded,
+                    "_vars": _vars,
+                },
+                indent=4,
             )
         if file_path:
             with open(Path(file_path), "w", encoding="utf-8") as file:
@@ -656,7 +669,9 @@ class CleverDict(dict):
                 raise KeyError(f"primary key {repr(al)} can't be deleted")
             del self._aliases[al]
             for alx in all_aliases(al):
-                if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
+                if (
+                    alx in list(self._aliases.keys())[1:]
+                ):  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
 
     def info(self, as_str=False):
@@ -671,7 +686,9 @@ class CleverDict(dict):
         if ids:
             if len(ids) > 1:
                 result.append(indent + " is ".join(ids))
-            id = ids[0]  # If more than one variable has the same name, use the first in the list
+            id = ids[
+                0
+            ]  # If more than one variable has the same name, use the first in the list
         else:
             id = "x"
         for k, v in self.items():
@@ -680,7 +697,12 @@ class CleverDict(dict):
                 if av == k:
                     parts.append(f"{id}[{repr(ak)}]")
             for ak, av in self._aliases.items():
-                if av == k and isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
+                if (
+                    av == k
+                    and isinstance(ak, str)
+                    and ak.isidentifier()
+                    and not keyword.iskeyword(ak)
+                ):
                     parts.append(f"{id}.{ak}")
             parts.append(f"{repr(v)}")
             result.append(indent + " == ".join(parts))
@@ -728,7 +750,10 @@ def all_aliases(name):
             else:
                 norm_name = name
 
-            norm_name = "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(norm_name))
+            norm_name = "".join(
+                ch if ("A"[:i] + ch).isidentifier() else "_"
+                for i, ch in enumerate(norm_name)
+            )
             if name != norm_name:
                 result.append(norm_name)
     return result
@@ -743,7 +768,9 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     CYGWIN = sys.platform.startswith("cygwin")
     MSYS2 = sys.platform.startswith("win") and ("GCC" in sys.version)
     # Determine local App Engine environment, per Google's own suggestion
-    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get("SERVER_SOFTWARE", "")
+    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get(
+        "SERVER_SOFTWARE", ""
+    )
     WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 
     def _posixify(name):
@@ -758,8 +785,13 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     if force_posix:
         return os.path.join(os.path.expanduser("~/.{}".format(_posixify(app_name))))
     if sys.platform == "darwin":
-        return os.path.join(os.path.expanduser("~/Library/Application Support"), app_name)
-    return os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), _posixify(app_name))
+        return os.path.join(
+            os.path.expanduser("~/Library/Application Support"), app_name
+        )
+    return os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        _posixify(app_name),
+    )
 
 
 if __name__ == "__main__":
@@ -776,4 +808,3 @@ if __name__ == "__main__":
     print(x)
     print(dir(x))
     delattr(x, "save_path")
-
