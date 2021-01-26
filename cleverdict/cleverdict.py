@@ -253,7 +253,7 @@ class CleverDict(dict):
         for ak, av in list(self._aliases.items()):
             if av == key:
                 del self._aliases[ak]
-        self.delete(name=key)  # Call an overwriteable user defined method
+        self.delete(name=key)
 
     def __delattr__(self, k):
         try:
@@ -261,6 +261,7 @@ class CleverDict(dict):
         except KeyError as e:
             if hasattr(self, k):
                 super().__delattr__(k)
+                self.delete(name=k)
             else:
                 raise AttributeError(e)
 
@@ -560,7 +561,7 @@ class CleverDict(dict):
         default .delete() method and is called every time a value changes or is
         created.
         """
-        self.save(self, name=name)
+        self.save()
 
     def setattr_direct(self, name, value):
         """

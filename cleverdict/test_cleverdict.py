@@ -954,8 +954,12 @@ class Test_README_examples:
         path = x.save_path
         x.add_alias("Patient Name", "name")
         assert '"\'name\'": "Patient Name"' in get_data(x.save_path)
+        x.delete_alias("name")
+        assert '"\'name\'": "Patient Name"' not in get_data(x.save_path)
         x.setattr_direct("internal_code", "xyz123")
         assert '"internal_code": "xyz123"' in get_data(x.save_path)
+        del x.internal_code
+        assert '"internal_code": "xyz123"' not in get_data(x.save_path)
         x.autosave("off")
         assert not hasattr(x, "save_path")
         assert Path(path).is_file()
