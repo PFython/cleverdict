@@ -236,9 +236,9 @@ class Test_Misc:
         del result[7]
         result["7"] = "zeven"
         assert CleverDict.from_json(d.to_json()) == result
-
-    #        assert CleverDict.from_json(d.to_json(never_save=["one"])) == eval(result.__repr__(ignore=["one"]))
-    #        assert CleverDict.from_json(d.to_json(never_save=["one", 7])) == eval(result.__repr__(ignore=["one", 7]))
+        assert CleverDict.from_json(d.to_json(ignore=["one"])) == eval(result.__repr__(ignore=["one"]))
+        assert CleverDict.from_json(d.to_json(ignore=["one", "two"])) == eval(result.__repr__(ignore=["one", "two"]))
+        assert CleverDict.from_json(d.to_json(ignore=["one", 7])) == eval(result.__repr__(ignore=["one", "7"]))
 
     def test_from_lines(self, tmpdir):
         d0 = CleverDict()
@@ -292,8 +292,8 @@ class Test_Misc:
         with pytest.raises(ValueError):
             CleverDict.from_json(json_data=json_data, file_path=file_path)
 
-    def test_never_save(self):
-        """CleverDict.never_save lists aliases and keys which should never be
+    def test_ignore(self):
+        """CleverDict.ignore lists aliases and keys which should never be
         converted to json or saved including:
 
         password

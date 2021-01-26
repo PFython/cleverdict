@@ -188,21 +188,29 @@ And you can import/export line ("`\n`") delimited strings or files using `.from_
     >>> lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
     >>> x=CleverDict.from_lines(lines, start_at=1)
 
-    >>> from pprint import pprint
-    >>> pprint(x.to_list())
-    [(1, 'This is my first line'),
-     (2, 'My second...'),
-     (3, ''),
-     (4, ''),
-     (5, ''),
-     (6, ''),
-     (7, 'My LAST'),
-     (8, '')]
+    >>> pprint(x)
+    {1: 'This is my first line',
+     2: 'My second...',
+     3: '',
+     4: '',
+     5: '',
+     6: '',
+     7: 'My LAST',
+     8: ''}
 
     >>> x.to_lines(start_at=7)
     'My LAST'
 
     >>> x.to_lines(file_path="lines.txt", start_at=1)
+
+If there are attributes such as `.password` that you want to exclude when using `.to_json()`, `.to_list()`, `to_lines()` and even `__repr__()`, just add the argument `ignore=` followed by a list of strings:
+
+    >>> x.password = "Top Secret - don't ever save to file!"
+    >>> x.to_lines(start_at=7)
+    "My LAST\n\nTop Secret - don't ever save to file!"
+
+    >>> x.to_lines(start_at=7, ignore=["password"])
+
 
 
 ## 5. ATTRIBUTE NAMES AND ALIASES

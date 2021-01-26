@@ -4,6 +4,7 @@ import inspect
 import keyword
 import itertools
 from pathlib import Path
+from pprint import pprint
 from datetime import datetime
 
 """
@@ -20,7 +21,7 @@ to_json(fullcopy=True) creates JSON that can fully recreate a CleverDict
 to_json(fullcopy=False) creates JSON from data dictionary only
 __delattr__ removes attributes created using setattr_direct
 Dependency on click removed
-Applied never_save to: to_lines, to_list, to_json
+Applied ignore=[] to: to_lines, to_list, to_json, __repr__
 Auto-delete feature implemented:
 https://github.com/PFython/cleverdict/issues/11
 Auto-save to json file implemented:
@@ -161,7 +162,6 @@ class CleverDict(dict):
     """
 
     expand = True  # Used by .delete_alias
-    never_save = "password PASSWORD Password save_path".split()
 
     def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
         self.setattr_direct("_aliases", {})
@@ -264,7 +264,7 @@ class CleverDict(dict):
     def __repr__(self, ignore=None):
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "never_save"}
+        ignore = set(ignore) | {"_aliases", "ignore"}
         _mapping = self.filtered_mapping(ignore)
         _aliases = {
             k: v for k, v in self._aliases.items() if k not in self and v in _mapping
@@ -323,7 +323,7 @@ class CleverDict(dict):
         """
         return CleverDict({k: value for k in iterable})
 
-    def to_list(self):
+    def to_list(self, ignore=None):
         """
         Creates a (json-serialisable) list of k,v pairs as a list of tuples.
         Main use case is Client/Server apps where returning a CleverDict object
@@ -338,7 +338,9 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
-        ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | {"_aliases", "ignore"}
         mapping = self.filtered_mapping(ignore)
         return [(k, v) for k, v in mapping.items()]
 
@@ -365,14 +367,15 @@ class CleverDict(dict):
                 del mapping[v]
         return mapping
 
-    def to_lines(self, file_path=None, start_at=0):
+    def to_lines(self, file_path=None, start_at=0, ignore=None):
         """
         Creates a line ("\n") delimited object or file using values for lines
         """
-        ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | {"_aliases", "ignore"}
         to_save = self.filtered_mapping(ignore)
-
-        lines = "\n".join(itertools.islice(to_save.values(), start_at, None))
+        lines = "\n".join(itertools.islice(to_save.values(), start_at-1, None))
         if not file_path:
             return lines
         with open(file_path, "w", encoding="utf-8") as file:
@@ -434,18 +437,18 @@ class CleverDict(dict):
         with open(self.save_path, "w", encoding="utf-8") as file:
             file.write('{"empty": True}')  # Create skeleton .json file
 
-    def to_json(self, file_path=None, fullcopy=False):
+    def to_json(self, file_path=None, fullcopy=False, ignore=None):
 
         """
         Return CleverDict serialised to JSON.
 
-        If never_save is not specified, the class variable .never_save is used
-
-        never_save: Exclude field in CleverDict.never_save if True eg passwords
+        ignore: Exclude field (eg "password") from output
         file: Save to file if True or filepath
 
         """
-        ignore = set(CleverDict.never_save) | {"_aliases", "never_save"}
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | {"_aliases", "ignore"}
         _mapping = self.filtered_mapping(ignore)
 
         if not fullcopy:
