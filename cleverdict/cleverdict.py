@@ -6,6 +6,8 @@ import itertools
 from pathlib import Path
 from pprint import pprint
 from datetime import datetime
+import types
+import inspect
 
 """
 Change log
@@ -162,17 +164,36 @@ class CleverDict(dict):
             value : value of this attribute.
     """
 
+    def set_save(self, savefunc):
+        params = tuple(list(inspect.signature(savefunc).parameters.keys())[1:])
+        if params!= ('name', 'value'): 
+            raise TypeError(f"save function signature not (name, value), but ({', '.join(params)})")
+        super().__setattr__("save",  types.MethodType(savefunc, CleverDict))       
+
+    def set_delete(self, savefunc):
+        params = tuple(list(inspect.signature(deletefunc).parameters.keys())[1:])
+        if params!= ('name',): 
+            raise TypeError(f"delete function signature not (name), but ({', '.join(params)})")
+        super().__setattr__("delete",  types.MethodType(deletefunc, CleverDict))       
+
     expand = True  # Used by .delete_alias
 
-    def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
+    def __init__(self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, **kwargs):
         self.setattr_direct("_aliases", {})
         with Expand(CleverDict.expand if _aliases is None else False):
+            if save is not None:
+                self.set_save(save)
+            if delete is not None:
+                self.set_delete(delete)
             self.update(_mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
+
+
+
         # Prevent over-writing class variables when first instance is created:
         for attr in ("original_save", "original_delete"):
             if not hasattr(CleverDict, attr):
@@ -253,7 +274,7 @@ class CleverDict(dict):
         for ak, av in list(self._aliases.items()):
             if av == key:
                 del self._aliases[ak]
-        self.delete(name=key)
+        self.delete(key)  #Ruud
 
     def __delattr__(self, k):
         try:
@@ -261,7 +282,7 @@ class CleverDict(dict):
         except KeyError as e:
             if hasattr(self, k):
                 super().__delattr__(k)
-                self.delete(name=k)
+                self.delete(k)  #Ruud
             else:
                 raise AttributeError(e)
 
@@ -273,13 +294,18 @@ class CleverDict(dict):
     def __repr__(self, ignore=None):
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore"}
+        ignore = set(ignore) | {"_aliases", "save", "delete"}
         _mapping = self.filtered_mapping(ignore)
         _aliases = {
             k: v for k, v in self._aliases.items() if k not in self and v in _mapping
         }
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+
+    @property
+    def _vars(self):
+        return {k: v for k, v in vars(self).items() if k not in {"_aliases", "save", "delete"}}
+
 
     def _add_alias(self, name, alias):
         """
@@ -349,7 +375,7 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore"}
+        ignore = set(ignore) | {"_aliases", "save", "delete"}
         mapping = self.filtered_mapping(ignore)
         return [(k, v) for k, v in mapping.items()]
 
@@ -386,9 +412,9 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore"}
+        ignore = set(ignore) | {"_aliases", "save", "delete"}
         to_save = self.filtered_mapping(ignore)
-        lines = "\n".join(itertools.islice(to_save.values(), start_at - 1, None))
+        lines = "\n".join(itertools.islice(to_save.values(), start_at, None))  # Ruud -1 removed
         if not file_path:
             return lines
         with open(file_path, "w", encoding="utf-8") as file:
@@ -429,9 +455,9 @@ class CleverDict(dict):
                 data = json.load(file)
         else:
             data = json.loads(json_data)
-        if set(data.keys()) == {"_mapping_encoded", "_aliases_encoded", "_vars"}:
+        if set(data.keys()) == {"_mapping_encoded", "_aliases", "_vars"}:
             _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
-            _aliases = {eval(k): v for k, v in data["_aliases_encoded"].items()}
+            _aliases = {k: v for k, v in data["_aliases"].items()}
             _vars = data["_vars"]
             return cls(_mapping, _aliases=_aliases, _vars=_vars)
         else:
@@ -461,7 +487,7 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore", "save_path"}
+        ignore = set(ignore) | {"_aliases", "save_path"}
         # save_path is a pathlib object and not serialisable
         # Also not required as any file created will know its own filename
         _mapping = self.filtered_mapping(ignore)
@@ -475,12 +501,12 @@ class CleverDict(dict):
                 if k not in self and v in _mapping
             }
             _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
-            _aliases_encoded = {repr(k): v for k, v in _aliases.items()}
+            _aliases = {k: v for k, v in _aliases.items() if k!=v}
             _vars = {k: v for k, v in vars(self).items() if k not in ignore}
             json_str = json.dumps(
                 {
                     "_mapping_encoded": _mapping_encoded,
-                    "_aliases_encoded": _aliases_encoded,
+                    "_aliases": _aliases,
                     "_vars": _vars,
                 },
                 indent=4,
@@ -501,7 +527,7 @@ class CleverDict(dict):
         """
         pass
 
-    def delete(self, name=None, value=None):
+    def delete(self, value=None):  #Ruud
         """
         Called every time a CleverDict value is deleted.  Overwrite with your
         own custome delete() method e.g. to automatically delete values from
@@ -561,7 +587,8 @@ class CleverDict(dict):
         default .delete() method and is called every time a value changes or is
         created.
         """
-        self.save()
+        pass        # Ruud
+#       self.save()  # Ruud
 
     def setattr_direct(self, name, value):
         """
@@ -583,8 +610,8 @@ class CleverDict(dict):
         None
         """
         super().__setattr__(name, value)
-        if name not in ["save", "delete"]:
-            self.save()
+        if name not in {"_aliases", "save", "delete"}:
+            self.save(name, value) #Ruud
 
     def get_key(self, name):
         """
@@ -657,7 +684,7 @@ class CleverDict(dict):
         for al in alias:
             for name in all_aliases(al):
                 self._add_alias(key, name)
-        self.save()
+#        self.save()  # Ruud
 
     def delete_alias(self, alias):
         """
@@ -676,7 +703,7 @@ class CleverDict(dict):
         -----
         If .expand == True (the 'normal' case), .delete_alias will remove all
         the specified alias AND all other aliases (apart from the original key).
-        If .exapand == False (most likely set via the Expand context manager),
+        If .expand == False (most likely set via the Expand context manager),
         .delete_alias will only remove the alias specified.
 
         Keys cannot be deleted.
@@ -694,7 +721,7 @@ class CleverDict(dict):
                     alx in list(self._aliases.keys())[1:]
                 ):  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
-        self.save()
+#        self.save() #Ruud
 
     def info(self, as_str=False, ignore=None):
         """
@@ -715,7 +742,7 @@ class CleverDict(dict):
             id = "x"
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore"}
+        ignore = set(ignore) | {"_aliases", "save", "delete"}
         mapping = self.filtered_mapping(ignore)
         for k, v in mapping.items():
             parts = []
@@ -733,7 +760,7 @@ class CleverDict(dict):
             parts.append(f"{repr(v)}")
             result.append(indent + " == ".join(parts))
         for k, v in vars(self).items():
-            if k not in ("_aliases"):
+            if k not in ignore:  # Ruud alias is not enough
                 result.append(f"{indent}{id}.{k} == {repr(v)}")
         output = "\n".join(result)
         if as_str:
@@ -818,3 +845,9 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
         os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
         _posixify(app_name),
     )
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
