@@ -191,9 +191,6 @@ class CleverDict(dict):
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
-
-
-
         # Prevent over-writing class variables when first instance is created:
         for attr in ("original_save", "original_delete"):
             if not hasattr(CleverDict, attr):
@@ -274,7 +271,7 @@ class CleverDict(dict):
         for ak, av in list(self._aliases.items()):
             if av == key:
                 del self._aliases[ak]
-        self.delete(key)  #Ruud
+        self.delete(key)
 
     def __delattr__(self, k):
         try:
@@ -282,7 +279,7 @@ class CleverDict(dict):
         except KeyError as e:
             if hasattr(self, k):
                 super().__delattr__(k)
-                self.delete(k)  #Ruud
+                self.delete(k)
             else:
                 raise AttributeError(e)
 
@@ -425,7 +422,7 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "ignore"}
+        ignore = set(ignore) | {"_aliases", "save", "delete"}
         to_save = self.filtered_mapping(ignore)
         if start_key is None:
             start_key = self.get_aliases()[0]
@@ -464,7 +461,6 @@ class CleverDict(dict):
         if file_path:
             with open(file_path, "r", encoding="utf-8") as file:
                 lines = file.read()
-
         index = {k + start_key: v.strip() for k, v in enumerate(lines.split("\n"))}
         return cls(index)
 
@@ -556,9 +552,9 @@ class CleverDict(dict):
         """
         pass
 
-    def delete(self, value=None):  #Ruud
+    def delete(self, name=None):
         """
-        Called every time a CleverDict value is deleted.  Overwrite with your
+        Called every time a CleverDict key/attribute is deleted.  Overwrite with your
         own custome delete() method e.g. to automatically delete values from
         file/database/cloud, send a confirmation request/notification etc.
 
@@ -616,8 +612,8 @@ class CleverDict(dict):
         default .delete() method and is called every time a value changes or is
         created.
         """
-        pass        # Ruud
-#       self.save()  # Ruud
+        pass
+#       self.save()
 
     def setattr_direct(self, name, value):
         """
@@ -640,7 +636,7 @@ class CleverDict(dict):
         """
         super().__setattr__(name, value)
         if name not in {"_aliases", "save", "delete"}:
-            self.save(name, value) #Ruud
+            self.save(name, value)
 
     def get_key(self, name):
         """
@@ -713,7 +709,7 @@ class CleverDict(dict):
         for al in alias:
             for name in all_aliases(al):
                 self._add_alias(key, name)
-#        self.save()  # Ruud
+#        self.save()
 
     def delete_alias(self, alias):
         """
@@ -750,7 +746,7 @@ class CleverDict(dict):
                     alx in list(self._aliases.keys())[1:]
                 ):  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
-#        self.save() #Ruud
+#        self.save()
 
     def info(self, as_str=False, ignore=None):
         """
@@ -789,7 +785,7 @@ class CleverDict(dict):
             parts.append(f"{repr(v)}")
             result.append(indent + " == ".join(parts))
         for k, v in vars(self).items():
-            if k not in ignore:  # Ruud alias is not enough
+            if k not in ignore:
                 result.append(f"{indent}{id}.{k} == {repr(v)}")
         output = "\n".join(result)
         if as_str:

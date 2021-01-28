@@ -420,9 +420,10 @@ class Test_Misc:
         with open(path, "r") as file:
             assert file.read() == info
         path.unlink()
+        # when called a second time, should be different:
         assert (
             CleverDict.get_new_save_path() != path
-        )  # when called a second time, should be different
+        )
 
 
     def test_get_app_dir(self):
@@ -432,9 +433,9 @@ class Test_Misc:
         """
         try:
             import click
+            assert click.get_app_dir("x") == cleverdict.get_app_dir("x")
         except ModuleNotFoundError:
             pytest.skip("could not import click")
-        assert click.get_app_dir("x") == cleverdict.get_app_dir("x")
 
 
 class Test_Internal_Logic:
@@ -674,10 +675,6 @@ class Test_Internal_Logic:
             x["a"]
             x.get_key("a")
         assert x.get_aliases() == []
-
-
-#    def test_version(self):
-#        assert isinstance(__version__, str)
 
 
 def example_save_function(self, name, value):
@@ -950,6 +947,7 @@ class Test_README_examples:
         assert x._7 == "Seven"
         assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})"
         x.add_alias(7, "NumberSeven")
+        assert x._aliases == {7: 7, '_7': 7, 'NumberSeven': 7}
         x.add_alias(7, "zeven")
         assert (
             repr(x)
@@ -991,6 +989,7 @@ class Test_README_examples:
     def test_SETTING_ATTRIBUTES_DIRECTLY_1(self):
         x = CleverDict()
         x.setattr_direct("direct", True)
+        assert x._vars == {'direct': True}
         assert repr(x) == "CleverDict({}, _aliases={}, _vars={'direct': True})"
         x.to_json(file_path="mydata.json", fullcopy=True)
         y = CleverDict.from_json(file_path="mydata.json")
@@ -1010,23 +1009,23 @@ class Test_README_examples:
                 data = file.read()
             return data
         x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
-        x.autosave(silent=True) #Ruud
+        x.autosave(silent=True)
         assert getattr(x, "save_path")
         x.Prognosis = "Not good"
         assert '"Prognosis": "Not good"' in get_data(x.save_path)
         path = x.save_path
-        x.autosave(silent=True, fullcopy=True) # Ruud
+        x.autosave(silent=True, fullcopy=True)
         assert path != x.save_path  # New file with new autosave instruction
         path = x.save_path
         x.add_alias("Patient Name", "name")
-#        assert '"\'name\'": "Patient Name"' in get_data(x.save_path)  # Ruud
+#        assert '"\'name\'": "Patient Name"' in get_data(x.save_path)
         x.delete_alias("name")
         assert '"\'name\'": "Patient Name"' not in get_data(x.save_path)
         x.setattr_direct("internal_code", "xyz123")
         assert '"internal_code": "xyz123"' in get_data(x.save_path)
         del x.internal_code
-#        assert '"internal_code": "xyz123"' not in get_data(x.save_path)  # Ruud?
-        x.autosave("off", silent=True)  #Ruud
+#        assert '"internal_code": "xyz123"' not in get_data(x.save_path)
+        x.autosave("off", silent=True)
         assert not hasattr(x, "save_path")
         assert Path(path).is_file()
         os.remove(path)
@@ -1052,7 +1051,7 @@ class Test_README_examples:
                 super().__init__(*args, **kwargs)
 
             def save(self, name, value):
-                if name not in ('_aliases', 'index'):  # Ruud
+                if name not in ('_aliases', 'index'):
                     self.index.append((name, value))
         x = Type1(data="Useless information")
         assert x.index == [("data", "Useless information")]
