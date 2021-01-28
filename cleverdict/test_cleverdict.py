@@ -7,6 +7,41 @@ from textwrap import dedent
 import json
 from pathlib import Path
 
+def example_save_function(self, name=None, value=None):
+    """
+    Example of a custom function which can be called by self._save()
+    whenever the value of a CleverDict instance is created or changed.
+    Required arguments are: self, name: any and value: any
+    Specify this (or any other) function as the default 'save' function as follows:
+    CleverDict.save = example_save_function
+    """
+    if name != "_aliases":
+        output = f"Notional save to database: .{name} = {value} {type(value)}"
+        with open("example.log", "a") as file:
+            file.write(output + "\n")
+
+def invalid_save_function(self, key, value):
+    pass
+
+
+def example_delete_function(self, name=None, value=None):
+    """ Example """
+    output = f"Notional DELETE to database: .{name}"
+    with open("example.log", "a") as file:
+        file.write(output + "\n")
+
+def get_data(path):
+            with open(path, "r") as file:
+                data = file.read()
+            return data
+
+
+def delete_log():
+    try:
+        os.remove("example.log")
+        return True
+    except FileNotFoundError:
+        return False
 
 class Test_Initialisation:
     def test_creation_using_existing_dict(self):
@@ -260,7 +295,6 @@ class Test_Misc:
             result.__repr__(ignore=["one", "7"])
         )
 
-
     def test_from_lines(self, tmpdir):
         d0 = CleverDict()
         d0[0] = "alpha"
@@ -290,7 +324,6 @@ class Test_Misc:
         with pytest.raises(ValueError):
             CleverDict.from_lines(lines=lines, file_path=file_path)
         os.remove(file_path)
-
 
     def test_from_json(self, tmpdir):
         d = CleverDict()
@@ -424,7 +457,6 @@ class Test_Misc:
         assert (
             CleverDict.get_new_save_path() != path
         )
-
 
     def test_get_app_dir(self):
         """
@@ -676,97 +708,74 @@ class Test_Internal_Logic:
             x.get_key("a")
         assert x.get_aliases() == []
 
-
-def example_save_function(self, name, value):
-    """
-    Example of a custom function which can be called by self._save()
-    whenever the value of a CleverDict instance is created or changed.
-    Required arguments are: self, name: any and value: any
-    Specify this (or any other) function as the default 'save' function as follows:
-    CleverDict.save = example_save_function
-    """
-    output = f"Notional save to database: .{name} = {value} {type(value)}"
-    with open("example.log", "a") as file:
-        file.write(output + "\n")
-
-
-def wrong_save_function(self, key, value):
-    pass
-
-
-def dummy_save_function(self, name, value):
-    pass
-
 class Test_Save_Functionality:
-    def delete_log(self):
-        try:
-            os.remove("example.log")
-        except FileNotFoundError:
-            pass
-
     def test_save_on_creation1(self):
         """ Once set, CleverDict.save should be called on creation """
+        delete_log()
         CleverDict.save = example_save_function
-        self.delete_log()
-        CleverDict({"total": 6, "usergroup": "Knights of Ni"})
-        with open("example.log", "r") as file:
-            log = file.read()
+        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
+        assert x.save.__name__ == "example_save_function"
+        log = get_data("example.log")
         assert (
             log
             == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         )
-        self.delete_log()
-        CleverDict.save = dummy_save_function
+        assert delete_log()
+        CleverDict.save = CleverDict.original_save
+        assert x.save.__name__ == "save"
+        assert not delete_log()
 
     def test_save_on_creation2(self):
-        self.delete_log()
-        CleverDict({"total": 6, "usergroup": "Knights of Ni"}, save=example_save_function)
-
-        with open("example.log", "r") as file:
-            log = file.read()
+        """ Overwrites (inactive) original save method using __init__ """
+        delete_log()
+        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"}, save=example_save_function)
+        assert x.save.__name__ == "example_save_function"
+        log = get_data("example.log")
         assert (
             log
             == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         )
-        self.delete_log()
-
+        assert delete_log()
+        x.set_save()
+        assert not delete_log()
+        assert x.save.__name__ == "save"
 
     def test_save_on_creation3(self):
-        self.delete_log()
+        delete_log()
         x = CleverDict()
         with pytest.raises(TypeError):
-            x.set_save(wrong_save_function)
-
-        self.delete_log()
+            x.set_save(invalid_save_function)
+        assert not delete_log()
 
     def test_save_on_creation4(self):
-        self.delete_log()
+        delete_log()
         x = CleverDict()
         x.set_save(example_save_function)
-        x["total"]=6
+        assert x.save.__name__ == "example_save_function"
+        x["total"] = 6
         x["usergroup"] = "Knights of Ni"
-
-        with open("example.log", "r") as file:
-            log = file.read()
+        log = get_data("example.log")
         assert (
             log
             == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         )
+        assert delete_log()
+        x.set_save()
+        assert x.save.__name__ == "save"
 
-        self.delete_log()
 
-    def test_save_onupdate(self):
+    def test_save_on_update(self):
         """ Once set, CleverDict.save should be called after updates """
         x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
-        self.delete_log()
+        delete_log()
         CleverDict.save = example_save_function
         x.total += 1
-        with open("example.log", "r") as file:
-            log = file.read()
+        log = get_data("example.log")
         assert log == "Notional save to database: .total = 7 <class 'int'>\n"
-        self.delete_log()
-        CleverDict.save = dummy_save_function
+        assert delete_log()
+        CleverDict.save = CleverDict.original_save
 
+    def test_subclass_to_store_class(self):
         class SaveDict(CleverDict):
             def __init__(self, *args, **kwargs):
                 self.setattr_direct("store", [])
@@ -807,24 +816,33 @@ class Test_Save_Functionality:
             ("_4", 10),
         ]
 
-
-def example_delete_function(self, key):
-    pass
-
 class Test_Delete_Functionality:
-    def delete_log(self):
-        try:
-            os.remove("example.log")
-        except FileNotFoundError:
-            pass
-
-    def test_auto_delete(self):
+    def test_delete_on_creation1(self):
         """ Once set, CleverDict.save should be called on creation """
+        delete_log()
         CleverDict.delete = example_delete_function
-        self.delete_log()
-        CleverDict({"total": 6, "usergroup": "Knights of Ni"})
-        CleverDict.save = dummy_save_function
+        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
+        assert x.delete.__name__ == "example_delete_function"
+        del x["usergroup"]
+        log = get_data("example.log")
+        assert log == 'Notional DELETE to database: .usergroup\n'
+        CleverDict.delete = CleverDict.original_delete
+        assert x.delete.__name__ == "delete"
+        assert delete_log()
 
+    def test_delete_on_creation2(self):
+        """ Overwrites (inactive) original delete method using __init__ """
+        delete_log()
+        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"}, delete=example_delete_function)
+        assert x.delete.__name__ == "example_delete_function"
+        del x.total
+        log = get_data("example.log")
+        assert log == 'Notional DELETE to database: .total\n'
+        assert delete_log()
+        assert x.delete.__name__ == "example_delete_function"
+        x.set_delete()
+        assert not delete_log()
+        assert x.delete.__name__ == "delete"
 
 class Test_README_examples:
     def test_BASIC_USE_1(self):
@@ -998,39 +1016,86 @@ class Test_README_examples:
         j = x.to_json(fullcopy=True)
         assert (
             j
-            == '{\n    "_mapping_encoded": {},\n    "_aliases": {},\n    "_vars": {\n        "direct": true\n    }\n}'
+            == '{\n    "_mapping_encoded": {},\n    "_aliases": {},\n    "_vars": {\n        "_aliases": {},\n        "direct": true\n    }\n}'
         )
         y = CleverDict.from_json(j)
         assert y == x
 
     def test_AUTOSAVE_1(self):
-        def get_data(path):
-            with open(path, "r") as file:
-                data = file.read()
-            return data
+        """ Default option: data dictionary saved only """
+
         x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+        assert not hasattr(x, "save_path")
+        assert x.save.__name__ == "save"
         x.autosave(silent=True)
-        assert getattr(x, "save_path")
+        assert x.save.__name__ == "_auto_save_data"
+        assert x.delete.__name__ == "_auto_save_data"
+        assert hasattr(x, "save_path")
         x.Prognosis = "Not good"
         assert '"Prognosis": "Not good"' in get_data(x.save_path)
+
+    def test_AUTOSAVE_2(self):
+        """ Changing from default to fullcopy changes save_path"""
+        x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+        x.autosave(silent=True)
         path = x.save_path
         x.autosave(silent=True, fullcopy=True)
         assert path != x.save_path  # New file with new autosave instruction
         path = x.save_path
+        assert x.save.__name__ == '_auto_save_fullcopy'
+        assert x.delete.__name__ == '_auto_save_fullcopy'
+
+    def test_AUTOSAVE_3(self):
+        """ .add_alias triggers autosave """
+        x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+        x.autosave(silent=True)
         x.add_alias("Patient Name", "name")
-#        assert '"\'name\'": "Patient Name"' in get_data(x.save_path)
+        assert '"name": "Patient Name"' not in get_data(x.save_path)
         x.delete_alias("name")
-        assert '"\'name\'": "Patient Name"' not in get_data(x.save_path)
+        x.autosave(silent=True, fullcopy=True)
+        x.add_alias("Patient Name", "name")
+        assert '"name": "Patient Name"' in get_data(x.save_path)
+
+    def test_AUTOSAVE_4(self):
+        """ .setattr_direct and del DON'T trigger autosave (default) """
+        x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+        x.autosave(silent=True)
+        x.setattr_direct("internal_code", "xyz123")
+        assert '"internal_code": "xyz123"' not in get_data(x.save_path)
+        del x.internal_code
+        assert '"internal_code": "xyz123"' not in get_data(x.save_path)
+
+    def test_AUTOSAVE_5(self):
+        """ .setattr_direct and del DO trigger autosave (fullcopy)"""
+        x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+        x.autosave(silent=True, fullcopy=True)
         x.setattr_direct("internal_code", "xyz123")
         assert '"internal_code": "xyz123"' in get_data(x.save_path)
         del x.internal_code
-#        assert '"internal_code": "xyz123"' not in get_data(x.save_path)
+        assert '"internal_code": "xyz123"' not in get_data(x.save_path)
+
+    def test_AUTOSAVE_6(self):
+        """ 'off' reverts to inactive default save behaviour """
+        x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
+        x.autosave(silent=True)
+        assert x.save.__name__ == '_auto_save_data'
+        assert x.delete.__name__ == '_auto_save_data'
+        assert hasattr(x, "save_path")
+        assert x.save_path.is_file()
+        os.remove(x.save_path)
         x.autosave("off", silent=True)
+        assert x.save.__name__ == "save"
+        assert x.delete.__name__ == "delete"
         assert not hasattr(x, "save_path")
-        assert Path(path).is_file()
-        os.remove(path)
-        assert CleverDict.save == CleverDict.original_save
-        assert CleverDict.delete == CleverDict.original_delete
+        x.autosave(silent=True, fullcopy=True)
+        assert x.save.__name__ == '_auto_save_fullcopy'
+        assert x.delete.__name__ == '_auto_save_fullcopy'
+        assert hasattr(x, "save_path")
+        assert x.save_path.is_file()
+        os.remove(x.save_path)
+        x.autosave("off", silent=True)
+        assert x.save.__name__ == "save"
+        assert x.delete.__name__ == "delete"
 
     def test_YOUR_OWN_AUTOSAVE_1(self):
         def your_save_function(self, name, value):

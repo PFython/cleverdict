@@ -135,7 +135,7 @@ Or use `vars()` to import another object's data (but not its methods):
     >>> x
     CleverDict({'name': 'Percival'}, _aliases={}, _vars={})
 
-## 4. EXPORTING FROM CLEVERICT
+## 4. EXPORTING FROM CLEVERDICT
 
 To return a regular Python `dict` of `CleverDict`'s raw data:
 

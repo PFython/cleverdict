@@ -107,6 +107,25 @@ The implemenation of several methods is more compact and more stable by reusing 
 More and improved tests.
 """
 
+def save(self, name=None, value=None):
+    """
+    Called every time a CleverDict value is created or change.
+    Overwrite with your own custome save() method e.g. to automatically
+    write values to file/database/cloud, send a notification etc.
+
+    CleverDict.delete = custom_save_method
+    """
+    pass
+
+def delete(self, name=None, value=None):
+    """
+    Called every time a CleverDict key/attribute is deleted.  Overwrite with your
+    own custome delete() method e.g. to automatically delete values from
+    file/database/cloud, send a confirmation request/notification etc.
+
+    CleverDict.delete = custom_delete_method
+    """
+    pass
 
 class Expand:
     def __init__(self, ok):
@@ -163,16 +182,43 @@ class CleverDict(dict):
             key: attribute which, when set, will *not* become an item of the Clever Dictionary.
             value : value of this attribute.
     """
+    original_save = save = save
+    original_delete = delete = delete
+    # Always ignore these objects (incl. methods and non JSON serialisables)
+    ignore = {"_aliases", "save_path", "save", "delete"}
 
-    def set_save(self, savefunc):
+    def set_save(self, savefunc=None):
+        """
+        Overwrites the default (inactive) save method of an instance with a new custom function.
+
+        Parameters
+        ----------
+        savefunc: function
+            The new function which will be called whenever values change.
+            If no function specified, resets to original (inactive) method.
+        """
+        if savefunc is None:
+            savefunc = CleverDict.original_save
         params = tuple(list(inspect.signature(savefunc).parameters.keys())[1:])
         if params!= ('name', 'value'):
             raise TypeError(f"save function signature not (name, value), but ({', '.join(params)})")
         super().__setattr__("save",  types.MethodType(savefunc, CleverDict))
 
-    def set_delete(self, savefunc):
+    def set_delete(self, deletefunc=None):
+        """
+        Overwrites the default (inactive) delete method of an instance with a new custom function.
+
+        Parameters
+        ----------
+        deletefunc: function
+            The new function which will be called whenever keys are deleted.
+            If no function specified, resets to original (inactive) method.
+        """
+        if deletefunc is None:
+            deletefunc = CleverDict.original_delete
         params = tuple(list(inspect.signature(deletefunc).parameters.keys())[1:])
-        if params!= ('name',):
+        if 'name' not in params:
+            print(params)
             raise TypeError(f"delete function signature not (name), but ({', '.join(params)})")
         super().__setattr__("delete",  types.MethodType(deletefunc, CleverDict))
 
@@ -191,58 +237,6 @@ class CleverDict(dict):
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
-        # Prevent over-writing class variables when first instance is created:
-        for attr in ("original_save", "original_delete"):
-            if not hasattr(CleverDict, attr):
-                setattr(CleverDict, attr, getattr(self, attr.split("_")[-1]))
-
-
-    def autosave(self, fullcopy=False, silent=False):
-        """Toggles autosave to a config file.
-
-        Parameters
-        ----------
-
-        fullcopy: bool or str
-            False -> Autosave using  _auto_save_data
-            True -> Autosave using  _auto_save_fullcopy
-            "off" -> Turn off autosave and delete .save_path
-        silent: bool
-            False -> Print confirmations and file path
-            True -> No confirmationor file path printed
-        """
-        if fullcopy == "off":
-            try:
-                # self.setattr_direct("save", CleverDict.original_save)
-                # self.setattr_direct("delete", CleverDict.original_delete)
-                CleverDict.save = CleverDict.original_save
-                CleverDict.delete = CleverDict.original_delete
-                if not silent:
-                    print("\n ⚠  Autosave disabled.")
-                    print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")
-                del self.save_path
-            except AttributeError as E:
-                print(f"\n ⚠  Error with autosave(fullcopy=off): {E}")
-                # Attempting to turn autosave off before it was ever enabled
-                return
-        else:
-            path = self.get("save_path") or self.get_new_save_path()
-            path = path.with_suffix(".json")
-            self.setattr_direct("save_path", Path(path))
-            if not path.is_file():
-                self.create_save_file()
-            if fullcopy:
-                # self.setattr_direct("save", CleverDict._auto_save_fullcopy)
-                CleverDict.save = CleverDict._auto_save_fullcopy
-            else:
-                # self.setattr_direct("save", CleverDict._auto_save_data)
-                CleverDict.save = CleverDict._auto_save_data
-            # Save and delete events trigger a call to the same method:
-            # self.setattr_direct("delete", CleverDict._auto_delete)
-            CleverDict.delete = CleverDict._auto_delete
-            self.save(name=None, value=None)
-            if not silent:
-                print(f"\n ⚠  Autosaving to:\n  {path}\n")
 
     def __setattr__(self, name, value):
         if name in self._aliases:
@@ -265,21 +259,21 @@ class CleverDict(dict):
         except KeyError as e:
             raise AttributeError(e)
 
-    def __delitem__(self, key):
-        key = self.get_key(key)
-        super().__delitem__(key)
+    def __delitem__(self, name):
+        self.delete(name=name)
+        name = self.get_key(name)
+        super().__delitem__(name)
         for ak, av in list(self._aliases.items()):
-            if av == key:
+            if av == name:
                 del self._aliases[ak]
-        self.delete(key)
 
-    def __delattr__(self, k):
+    def __delattr__(self, name):
         try:
-            del self[k]
+            del self[name]
         except KeyError as e:
-            if hasattr(self, k):
-                super().__delattr__(k)
-                self.delete(k)
+            if hasattr(self, name):
+                self.delete(name=name)
+                super().__delattr__(name)
             else:
                 raise AttributeError(e)
 
@@ -291,7 +285,7 @@ class CleverDict(dict):
     def __repr__(self, ignore=None):
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "save", "delete"}
+        ignore = set(ignore) | CleverDict.ignore
         _mapping = self.filtered_mapping(ignore)
         _aliases = {
             k: v for k, v in self._aliases.items() if k not in self and v in _mapping
@@ -304,7 +298,7 @@ class CleverDict(dict):
         """
         Returns a dict of any 'direct' attributes set with .setattr_direct()
         """
-        return {k: v for k, v in vars(self).items() if k not in {"_aliases", "save", "delete"}}
+        return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore}
 
 
     def _add_alias(self, name, alias):
@@ -375,7 +369,7 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "save", "delete"}
+        ignore = set(ignore) | CleverDict.ignore
         mapping = self.filtered_mapping(ignore)
         return [(k, v) for k, v in mapping.items()]
 
@@ -422,7 +416,7 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "save", "delete"}
+        ignore = set(ignore) | CleverDict.ignore
         to_save = self.filtered_mapping(ignore)
         if start_key is None:
             start_key = self.get_aliases()[0]
@@ -434,7 +428,6 @@ class CleverDict(dict):
         lines = {}
         for k,v in to_save.items():
             if k != start_key and not lines:
-                print
                 continue
             lines.update({k:v})
         lines = "\n".join(lines.values())
@@ -512,9 +505,9 @@ class CleverDict(dict):
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "save_path"}
-        # save_path is a pathlib object and not serialisable
-        # Also not required as any file created will know its own filename
+        ignore = set(ignore) | CleverDict.ignore
+        if fullcopy is True:
+            ignore.remove("_aliases")
         _mapping = self.filtered_mapping(ignore)
 
         if not fullcopy:
@@ -542,25 +535,54 @@ class CleverDict(dict):
         else:
             return json_str
 
-    def save(self, name=None, value=None):
-        """
-        Called every time a CleverDict value is created or change.
-        Overwrite with your own custome save() method e.g. to automatically
-        write values to file/database/cloud, send a notification etc.
 
-        CleverDict.delete = custom_save_method
-        """
-        pass
+    def autosave(self, fullcopy=False, silent=False):
+        """Toggles autosave to a config file.
 
-    def delete(self, name=None):
-        """
-        Called every time a CleverDict key/attribute is deleted.  Overwrite with your
-        own custome delete() method e.g. to automatically delete values from
-        file/database/cloud, send a confirmation request/notification etc.
+        Parameters
+        ----------
 
-        CleverDict.delete = custom_delete_method
+        fullcopy: bool or str
+            False -> Autosave using  _auto_save_data
+            True -> Autosave using  _auto_save_fullcopy
+            "off" -> Turn off autosave and delete .save_path
+        silent: bool
+            False -> Print confirmations and file path
+            True -> No confirmationor file path printed
         """
-        pass
+        if fullcopy == "off":
+            try:
+                self.set_save()
+                self.set_delete()
+                if not silent:
+                    print("\n ⚠  Autosave disabled.")
+                    print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")
+                del self.save_path
+            except AttributeError as E:
+                print(f"\n ⚠  Error with autosave(fullcopy=off): {E}")
+                # Attempting to turn autosave off before it was ever enabled
+                return
+        else:
+            path = self.get("save_path") or self.get_new_save_path()
+            path = path.with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+            if not path.is_file():
+                self.create_save_file()
+            # Save and delete events trigger a call to the same method:
+            if fullcopy:
+                super().__setattr__("save",  types.MethodType(CleverDict._auto_save_fullcopy, self))
+                super().__setattr__("delete",  types.MethodType(CleverDict._auto_save_fullcopy, self))
+                # self.set_save(self._auto_save_fullcopy)
+                # self.set_delete(self._auto_save_fullcopy)
+            else:
+                super().__setattr__("save",  types.MethodType(CleverDict._auto_save_data, self))
+                super().__setattr__("delete",  types.MethodType(CleverDict._auto_save_data, self))
+                # self.set_save(self._auto_save_data)
+                # self.set_delete(self._auto_save_data)
+            self.save(name=None, value=None)
+            if not silent:
+                print(f"\n ⚠  Autosaving to:\n  {path}\n")
+
 
     def _auto_save_data(self, name=None, value=None):
         """
@@ -604,17 +626,6 @@ class CleverDict(dict):
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
 
-    def _auto_delete(self, name=None):
-        """Currently just calls self.save but could be overwritten with
-        something more sophisticated.
-
-        If .autosave() is called on an object, this method overwrites the
-        default .delete() method and is called every time a value changes or is
-        created.
-        """
-        pass
-#       self.save()
-
     def setattr_direct(self, name, value):
         """
         Sets an attribute directly, i.e. without making it into an item.
@@ -634,9 +645,10 @@ class CleverDict(dict):
         -------
         None
         """
-        super().__setattr__(name, value)
-        if name not in {"_aliases", "save", "delete"}:
+        if name not in CleverDict.ignore:
             self.save(name, value)
+        super().__setattr__(name, value)
+        self.save(name=name, value=value)
 
     def get_key(self, name):
         """
@@ -709,7 +721,7 @@ class CleverDict(dict):
         for al in alias:
             for name in all_aliases(al):
                 self._add_alias(key, name)
-#        self.save()
+        self.save(name=name, value=alias)
 
     def delete_alias(self, alias):
         """
@@ -746,7 +758,7 @@ class CleverDict(dict):
                     alx in list(self._aliases.keys())[1:]
                 ):  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
-#        self.save()
+        self.save(name=alias, value=None)
 
     def info(self, as_str=False, ignore=None):
         """
@@ -767,7 +779,7 @@ class CleverDict(dict):
             id = "x"
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "save", "delete"}
+        ignore = set(ignore) | CleverDict.ignore
         mapping = self.filtered_mapping(ignore)
         for k, v in mapping.items():
             parts = []
@@ -870,9 +882,3 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
         os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
         _posixify(app_name),
     )
-
-def main():
-    pass
-
-if __name__ == "__main__":
-    main()
