@@ -166,15 +166,15 @@ class CleverDict(dict):
 
     def set_save(self, savefunc):
         params = tuple(list(inspect.signature(savefunc).parameters.keys())[1:])
-        if params!= ('name', 'value'): 
+        if params!= ('name', 'value'):
             raise TypeError(f"save function signature not (name, value), but ({', '.join(params)})")
-        super().__setattr__("save",  types.MethodType(savefunc, CleverDict))       
+        super().__setattr__("save",  types.MethodType(savefunc, CleverDict))
 
     def set_delete(self, savefunc):
         params = tuple(list(inspect.signature(deletefunc).parameters.keys())[1:])
-        if params!= ('name',): 
+        if params!= ('name',):
             raise TypeError(f"delete function signature not (name), but ({', '.join(params)})")
-        super().__setattr__("delete",  types.MethodType(deletefunc, CleverDict))       
+        super().__setattr__("delete",  types.MethodType(deletefunc, CleverDict))
 
     expand = True  # Used by .delete_alias
 
@@ -304,6 +304,9 @@ class CleverDict(dict):
 
     @property
     def _vars(self):
+        """
+        Returns a dict of any 'direct' attributes set with .setattr_direct()
+        """
         return {k: v for k, v in vars(self).items() if k not in {"_aliases", "save", "delete"}}
 
 
@@ -406,22 +409,45 @@ class CleverDict(dict):
         """ Returns a regular dict of the core data dictionary """
         return self.filtered_mapping(ignore or [])
 
-    def to_lines(self, file_path=None, start_at=0, ignore=None):
+    def to_lines(self, file_path=None, start_key=None, ignore=None):
         """
         Creates a line ("\n") delimited object or file using values for lines
+
+        Parameters
+        ----------
+        start_key: int | str
+            The key (or alias) to start at.
+            Useful for 'human' counting i.e. starting at 1 not 0.
+            Also allows for keys/aliases to be references e.g. "Footnote"
+        ignore: list
+            Any keys/aliases to ignore from output.  Ignoring an alias ignored
+            all other aliases and the primary key; likewise ignoring the key.
         """
         if ignore is None:
             ignore = set()
-        ignore = set(ignore) | {"_aliases", "save", "delete"}
+        ignore = set(ignore) | {"_aliases", "ignore"}
         to_save = self.filtered_mapping(ignore)
-        lines = "\n".join(itertools.islice(to_save.values(), start_at, None))  # Ruud -1 removed
+        if start_key is None:
+            start_key = self.get_aliases()[0]
+        else:
+            try:
+                start_key = self._aliases[start_key]
+            except KeyError:
+                raise
+        lines = {}
+        for k,v in to_save.items():
+            if k != start_key and not lines:
+                print
+                continue
+            lines.update({k:v})
+        lines = "\n".join(lines.values())
         if not file_path:
             return lines
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(lines)
 
     @classmethod
-    def from_lines(cls, lines=None, file_path=None, start_at=0):
+    def from_lines(cls, lines=None, file_path=None, start_key=1):
         """
         Creates a new CleverDict object and loads data from a line ('\n')
         delimited object or file.
@@ -429,6 +455,8 @@ class CleverDict(dict):
         keys: line numbers, starting Pythonically with zero
         values: line contents (str)
         """
+        if not isinstance(start_key, int):
+            raise TypeError(".from_lines(start_key=) must be an integer")
         if lines and file_path:
             raise ValueError("both lines and file_path specified")
         if not (lines or file_path):
@@ -436,7 +464,8 @@ class CleverDict(dict):
         if file_path:
             with open(file_path, "r", encoding="utf-8") as file:
                 lines = file.read()
-        index = {k + start_at: v.strip() for k, v in enumerate(lines.split("\n"))}
+
+        index = {k + start_key: v.strip() for k, v in enumerate(lines.split("\n"))}
         return cls(index)
 
     @classmethod

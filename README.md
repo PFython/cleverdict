@@ -167,8 +167,9 @@ You can also use the `.to_list()` method to generate a list of key/value pairs:
 And you can import/export text files using `.from_lines()` and `.to_lines()`:
 
     >>> lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
-    >>> x = CleverDict.from_lines(lines, start_at=1)
+    >>> x = CleverDict.from_lines(lines)
 
+    >>> from pprint import pprint
     >>> pprint(x)
     {1: 'This is my first line',
      2: 'My second...',
@@ -179,22 +180,44 @@ And you can import/export text files using `.from_lines()` and `.to_lines()`:
      7: 'My LAST',
      8: ''}
 
-    >>> x.to_lines(start_at=7)
+     >>> x.to_lines(file_path="lines.txt")
+
+By default `.from_lines()` and `.to_lines()` use human numbering starting with key 1 (integer) but you can specify a start point with `start_key=`:
+
+    >>> x.to_lines(start_key=7)
+    'My LAST\n'  # That '\n' at the end is actually Line 8 (empty)
+
+    >>> x.to_lines(file_path="lines.txt")
+
+Although primarily intended for numerical indexing, you can also use *strings* with `start_key=`, which is handy for referencing lines with a custom 'bookmark' for example.  You can choose between creating an **alias** (recommended - see next Section) or actually creating/overwriting with a new **key**:
+
+    >>> x.add_alias(7, "The End")
+    >>> new_lines = x.to_lines(start_key="The End")
+    >>> new_lines
     'My LAST\n'
 
-    >>> x.to_lines(file_path="lines.txt", start_at=1)
+    >>> x.footnote1 = "Source: Wikipedia"
+    >>> x.update({9:"All references to living persons are accidental"})
+    >>> x.to_lines(start_key="footnote1")
+    'Source: Wikipedia\nAll references to living persons are accidental'
+
+> NB: `CleverDict`, like regular dictionaries from Python 3.6 onwards, stores values **in the order you create them**.  By default though `pprint` will helpfully (!) **sort** the keys, so don't panic if they seem out of order! Just use `repr()` to confirm the actual order, or `.info()` which is explained more fully in Section 6.
+
+<center>
+
+![Keep Calm](https://raw.githubusercontent.com/PFython/cleverdict/master/keep_calm_use_info.png)
+
+</center>
 
 If you want to **exclude** (sensitive) attributes such as `.password` from the output of `.to_json()`, `.to_list()`, `.to_dict`, `.to_lines()`, `.info()` and even `__repr__()`, just add the argument `ignore=` followed by a list of attribute/key names to ignore:
 
     >>> x.password = "Top Secret - don't ever save to file!"
 
-    >>> x.to_lines(start_at=7)
+    >>> x.to_lines(start_key=7)
     "My LAST\n\nTop Secret - don't ever save to file!"
 
-    >>> x.to_lines(start_at=7, ignore=["password"])
+    >>> x.to_lines(start_key=7, ignore=["password"])
     'My LAST\n'
-
-Finally the `.info()` method is covered in Section 6 as it requires a little more explanation first.
 
 ## 5. ATTRIBUTE NAMES AND ALIASES
 
