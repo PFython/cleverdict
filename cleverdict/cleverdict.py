@@ -127,7 +127,7 @@ def save(self, name=None, value=None):
 
     Note
     ----
-    This function should handle name is None properly.    
+    This function should handle name is None properly.
     """
     pass
 
@@ -147,7 +147,7 @@ def delete(self, name=None):
 
     Note
     ----
-    This function should handle name is None properly.    
+    This function should handle name is None properly.
     """
     pass
 
@@ -186,7 +186,10 @@ def all_aliases(name):
             else:
                 norm_name = name
 
-            norm_name = "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(norm_name))
+            norm_name = "".join(
+                ch if ("A"[:i] + ch).isidentifier() else "_"
+                for i, ch in enumerate(norm_name)
+            )
             if name != norm_name:
                 result.append(norm_name)
     return result
@@ -201,7 +204,9 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     CYGWIN = sys.platform.startswith("cygwin")
     MSYS2 = sys.platform.startswith("win") and ("GCC" in sys.version)
     # Determine local App Engine environment, per Google's own suggestion
-    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get("SERVER_SOFTWARE", "")
+    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get(
+        "SERVER_SOFTWARE", ""
+    )
     WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 
     def _posixify(name):
@@ -216,8 +221,13 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     if force_posix:
         return os.path.join(os.path.expanduser("~/.{}".format(_posixify(app_name))))
     if sys.platform == "darwin":
-        return os.path.join(os.path.expanduser("~/Library/Application Support"), app_name)
-    return os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), _posixify(app_name))
+        return os.path.join(
+            os.path.expanduser("~/Library/Application Support"), app_name
+        )
+    return os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        _posixify(app_name),
+    )
 
 
 class Expand:
@@ -234,11 +244,9 @@ class Expand:
         """
         self.ok = ok
 
-
     def __enter__(self):
         self.save_expand = CleverDict.expand
         CleverDict.expand = self.ok
-
 
     def __exit__(self, *args):
         CleverDict.expand = self.save_expand
@@ -288,7 +296,9 @@ class CleverDict(dict):
     # Used by .delete_alias:
     expand = True
 
-    def __init__(self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, **kwargs):
+    def __init__(
+        self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, **kwargs
+    ):
         self.setattr_direct("_aliases", {})
         with Expand(CleverDict.expand if _aliases is None else False):
             if save is not None:
@@ -302,7 +312,6 @@ class CleverDict(dict):
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
 
-
     def __setattr__(self, name, value):
         if name in vars(self).keys():
             super().__setattr__(name, value)
@@ -315,21 +324,17 @@ class CleverDict(dict):
             super().__setitem__(name, value)
         self.save(name=name, value=value)
 
-
     __setitem__ = __setattr__
-
 
     def __getitem__(self, name):
         name = self.get_key(name)
         return super().__getitem__(name)
-
 
     def __getattr__(self, name):
         try:
             return self[name]
         except KeyError as e:
             raise AttributeError(e)
-
 
     def __delitem__(self, name):
         name = self.get_key(name)
@@ -338,7 +343,6 @@ class CleverDict(dict):
         for ak, av in list(self._aliases.items()):
             if av == name:
                 del self._aliases[ak]
-
 
     def __delattr__(self, name):
         try:
@@ -350,22 +354,21 @@ class CleverDict(dict):
             else:
                 raise AttributeError(e)
 
-
     def __eq__(self, other):
         if isinstance(other, CleverDict):
             return self.items() == other.items() and vars(self) == vars(other)
         return NotImplemented
-
 
     def __repr__(self, ignore=None):
         if ignore is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
         _mapping = self._filtered_mapping(ignore)
-        _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
+        _aliases = {
+            k: v for k, v in self._aliases.items() if k not in self and v in _mapping
+        }
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
-
 
     @property
     def _vars(self):
@@ -373,7 +376,6 @@ class CleverDict(dict):
         Returns a dict of any 'direct' attributes set with .setattr_direct()
         """
         return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore}
-
 
     def get_key(self, name):
         """
@@ -395,7 +397,6 @@ class CleverDict(dict):
         if name in self._aliases:
             return self._aliases[name]
         raise KeyError(name)
-
 
     def _filtered_mapping(self, ignore):
         """
@@ -423,7 +424,6 @@ class CleverDict(dict):
                 del mapping[v]
         return mapping
 
-
     def update(self, _mapping=(), **kwargs):
         """
         Parameters
@@ -439,7 +439,6 @@ class CleverDict(dict):
 
         for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
             self.__setitem__(k, v)
-
 
     def info(self, as_str=False, ignore=None):
         """
@@ -478,7 +477,12 @@ class CleverDict(dict):
                 if av == k:
                     parts.append(f"{id}[{repr(ak)}]")
             for ak, av in self._aliases.items():
-                if av == k and isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
+                if (
+                    av == k
+                    and isinstance(ak, str)
+                    and ak.isidentifier()
+                    and not keyword.iskeyword(ak)
+                ):
                     parts.append(f"{id}.{ak}")
             parts.append(f"{repr(v)}")
             result.append(indent + " == ".join(parts))
@@ -490,7 +494,6 @@ class CleverDict(dict):
             return output
         else:
             print(output)
-
 
     _default = object()
 
@@ -522,7 +525,9 @@ class CleverDict(dict):
         Used by add_alias, __init__ and __setattr__.
         """
         if alias in self._aliases and self._aliases[alias] != name:
-            raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
+            raise KeyError(
+                f"{repr(alias)} already an alias for {repr(self._aliases[alias])}"
+            )
         self._aliases[alias] = name
 
     def add_alias(self, name, alias):
@@ -587,7 +592,6 @@ class CleverDict(dict):
                     del self._aliases[alx]
         self.save(name=None, value=None)
 
-
     def setattr_direct(self, name, value):
         """
         Sets an attribute directly, i.e. without making it into an item.
@@ -606,7 +610,6 @@ class CleverDict(dict):
         super().__setattr__(name, value)
         if name not in CleverDict.ignore:
             self.save(name, value)
-
 
     def to_list(self, ignore=None):
         """
@@ -632,7 +635,6 @@ class CleverDict(dict):
         mapping = self._filtered_mapping(ignore)
         return [(k, v) for k, v in mapping.items()]
 
-
     def to_dict(self, ignore=None):
         """
         Returns a regular dict of the core data dictionary
@@ -651,7 +653,6 @@ class CleverDict(dict):
         ignore = set(ignore) | CleverDict.ignore
 
         return self._filtered_mapping(ignore=ignore)
-
 
     @classmethod
     def fromkeys(cls, iterable, value):
@@ -742,7 +743,7 @@ class CleverDict(dict):
 
         Notes
         -----
-        specifying both lines and file_path raises a ValueError 
+        specifying both lines and file_path raises a ValueError
         """
         if not isinstance(start_from_key, int):
             raise TypeError(".from_lines(start_from_key=) must be an integer")
@@ -755,7 +756,6 @@ class CleverDict(dict):
                 lines = file.read()
         index = {k + start_from_key: v.strip() for k, v in enumerate(lines.split("\n"))}
         return cls(index)
-
 
     def to_json(self, file_path=None, fullcopy=False, ignore=None):
 
@@ -778,7 +778,7 @@ class CleverDict(dict):
         Returns
         -------
         JSON formatted string if no file_path supplied : str
-        None is file_path is supplied
+        None if file_path is supplied
 
         Notes
         -----
@@ -793,17 +793,27 @@ class CleverDict(dict):
         if not fullcopy:
             json_str = json.dumps(_mapping, indent=4)
         else:
-            _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
+            _aliases = {
+                k: v
+                for k, v in self._aliases.items()
+                if k not in self and v in _mapping
+            }
             _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
             _aliases = {k: v for k, v in _aliases.items() if k != v}
             _vars = {k: v for k, v in vars(self).items() if k not in ignore}
-            json_str = json.dumps({"_mapping_encoded": _mapping_encoded, "_aliases": _aliases, "_vars": _vars}, indent=4)
+            json_str = json.dumps(
+                {
+                    "_mapping_encoded": _mapping_encoded,
+                    "_aliases": _aliases,
+                    "_vars": _vars,
+                },
+                indent=4,
+            )
         if file_path:
             with open(Path(file_path), "w", encoding="utf-8") as file:
                 file.write(json_str)
         else:
             return json_str
-
 
     @classmethod
     def from_json(cls, json_data=None, file_path=None):
@@ -841,7 +851,6 @@ class CleverDict(dict):
         else:
             return cls(data)
 
-
     @classmethod
     def get_new_save_path(cls):
         """
@@ -861,8 +870,9 @@ class CleverDict(dict):
         """
         Creates a skeleton file to store autosave data if one doesn't already exist.
 
-        A Directories/folders is created if they don't already exist, based on .save_path
-        An (almost) empty file, based on .save_path.name
+        Directory/folder is created if they don't already exist, based on
+        .save_path
+        An (almost) empty file is created, based on .save_path.name
         """
         if self.save_path.is_file():
             return
@@ -872,7 +882,6 @@ class CleverDict(dict):
             pass
         with open(self.save_path, "w", encoding="utf-8") as file:
             file.write('{"empty": True}')
-
 
     def set_save(self, savefunc=None):
         """
@@ -889,9 +898,10 @@ class CleverDict(dict):
             savefunc = CleverDict.original_save
         params = tuple(list(inspect.signature(savefunc).parameters.keys())[1:])
         if params != ("name", "value"):
-            raise TypeError(f"save function signature not (name, value), but ({', '.join(params)})")
+            raise TypeError(
+                f"save function signature not (name, value), but ({', '.join(params)})"
+            )
         super().__setattr__("save", types.MethodType(savefunc, CleverDict))
-
 
     def set_delete(self, deletefunc=None):
         """
@@ -909,9 +919,10 @@ class CleverDict(dict):
             deletefunc = CleverDict.original_delete
         params = tuple(list(inspect.signature(deletefunc).parameters.keys())[1:])
         if params != ("name",):
-            raise TypeError(f"delete function signature not (name), but ({', '.join(params)})")
+            raise TypeError(
+                f"delete function signature not (name), but ({', '.join(params)})"
+            )
         super().__setattr__("delete", types.MethodType(deletefunc, CleverDict))
-
 
     def autosave(self, fullcopy=False, silent=False):
         """Toggles autosave to a config file.
@@ -947,12 +958,20 @@ class CleverDict(dict):
             if not path.is_file():
                 self.create_save_file()
             if fullcopy:
-            # Save and delete events trigger a call to the same method:
-                super().__setattr__("save", types.MethodType(CleverDict._auto_save_fullcopy, self))
-                super().__setattr__("delete", types.MethodType(CleverDict._auto_save_fullcopy, self))
+                # Save and delete events trigger a call to the same method:
+                super().__setattr__(
+                    "save", types.MethodType(CleverDict._auto_save_fullcopy, self)
+                )
+                super().__setattr__(
+                    "delete", types.MethodType(CleverDict._auto_save_fullcopy, self)
+                )
             else:
-                super().__setattr__("save", types.MethodType(CleverDict._auto_save_data, self))
-                super().__setattr__("delete", types.MethodType(CleverDict._auto_save_data, self))
+                super().__setattr__(
+                    "save", types.MethodType(CleverDict._auto_save_data, self)
+                )
+                super().__setattr__(
+                    "delete", types.MethodType(CleverDict._auto_save_data, self)
+                )
             self.save(name=None, value=None)
             if not silent:
                 print(f"\n ⚠  Autosaving to:\n  {path}\n")
@@ -1003,4 +1022,3 @@ class CleverDict(dict):
             path = self.get_new_save_path().with_suffix(".json")
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
-
