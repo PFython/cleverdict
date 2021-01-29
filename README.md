@@ -182,23 +182,23 @@ And you can import/export text files using `.from_lines()` and `.to_lines()`:
 
      >>> x.to_lines(file_path="lines.txt")
 
-By default `.from_lines()` and `.to_lines()` use human numbering starting with key 1 (integer) but you can specify a start point with `start_key=`:
+By default `.from_lines()` and `.to_lines()` use human numbering starting with key 1 (integer) but you can specify a start point with `start_from_key=`:
 
-    >>> x.to_lines(start_key=7)
+    >>> x.to_lines(start_from_key=7)
     'My LAST\n'  # That '\n' at the end is actually Line 8 (empty)
 
     >>> x.to_lines(file_path="lines.txt")
 
-Although primarily intended for numerical indexing, you can also use *strings* with `start_key=`, which is handy for referencing lines with a custom 'bookmark' for example.  You can choose between creating an **alias** (recommended - see next Section) or actually creating/overwriting with a new **key**:
+Although primarily intended for numerical indexing, you can also use *strings* with `start_from_key=`, which is handy for referencing lines with a custom 'bookmark' for example.  You can choose between creating an **alias** (recommended - see next Section) or actually creating/overwriting with a new **key**:
 
     >>> x.add_alias(7, "The End")
-    >>> new_lines = x.to_lines(start_key="The End")
+    >>> new_lines = x.to_lines(start_from_key="The End")
     >>> new_lines
     'My LAST\n'
 
     >>> x.footnote1 = "Source: Wikipedia"
     >>> x.update({9:"All references to living persons are accidental"})
-    >>> x.to_lines(start_key="footnote1")
+    >>> x.to_lines(start_from_key="footnote1")
     'Source: Wikipedia\nAll references to living persons are accidental'
 
 > NB: `CleverDict`, like regular dictionaries from Python 3.6 onwards, stores values **in the order you create them**.  By default though `pprint` will helpfully (!) **sort** the keys, so don't panic if they seem out of order! Just use `repr()` to confirm the actual order, or `.info()` which is explained more fully in Section 6.
@@ -213,10 +213,10 @@ If you want to **exclude** (sensitive) attributes such as `.password` from the o
 
     >>> x.password = "Top Secret - don't ever save to file!"
 
-    >>> x.to_lines(start_key=7)
+    >>> x.to_lines(start_from_key=7)
     "My LAST\n\nTop Secret - don't ever save to file!"
 
-    >>> x.to_lines(start_key=7, ignore=["password"])
+    >>> x.to_lines(start_from_key=7, ignore=["password"])
     'My LAST\n'
 
 ## 5. ATTRIBUTE NAMES AND ALIASES
@@ -365,16 +365,14 @@ This even solves the pesky problem of `json.dumps()` converting numeric keys to 
 
 ## 8. THE AUTO-SAVE FEATURE
 
-Following the "*batteries included*" philosophy, we've included not one but **two** powerful autosave/autodelete options which, when activated, will save your `CleverDict` data to the recommended 'Settings' folder of whichever Operating System you're using:
-
+Following the "*batteries included*" philosophy, we've included not one but **two** powerful autosave/autodelete options which, when activated, will save your `CleverDict` data to the recommended 'Settings' folder of whichever Operating System you're using.
 ---
 
 **AUTOSAVE OPTION #1: DICTIONARY DATA ONLY**
 
 
     >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
-
-    >>> x.autosave()
+    >>> x.autosave()  # ONLY affects x.save not, CleverDict.save
 
     ⚠ Autosaving to:
     C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
@@ -388,7 +386,7 @@ If you browse the json file, you should see `.Prognosis` has been saved along wi
 
 In **Section 7** you saw how to use `.to_json(fullcopy=True)` to create a fully reconstructable image of your `CleverDict` as a JSON string or file.  You can set this as the autosave/autodelete method using the same simple syntax:
 
-    >>> x.autosave(fullcopy=True)
+    >>> x.autosave(fullcopy=True)  # ONLY affects x.save, not CleverDict.save
 
 With this autosave option, **all dictionary data**, **all aliases** (in `_aliases`), and **all attributes** (including `_vars`) will be saved whenever they're created, changed, or deleted.
 
@@ -402,24 +400,41 @@ In both `.autosave()` options the file path is stored as `.save_path` using `.se
 
 To disable autosaving/autodeletion  just enter:
 
-    >>> x.autosave("off")
+    >>> x.autosave("off")  # ONLY affects x.save, not CleverDict.save
 
     ⚠ Autosave disabled.
 
     ⓘ Previous updates saved to:
        C:\Users\Peter\AppData\Roaming\CleverDict\2021-01-20-15-03-54-30.json
 
-Or for finer control:
+To deactivate `.save()` or `.delete` separately:
 
-    >>> CleverDict.save = CleverDict.original_save
-    >>> CleverDict.delete = CleverDict.original_delete
+    >>> x.set_save()
+    >>> x.set_deleve()
 
 
-## 9. CREATING YOUR OWN AUTO-SAVE FUNCTION
+## 9. CREATING YOUR OWN AUTO-SAVE/AUTO-DELETE FUNCTION
 
-You can set pretty much any function to be run **automatically** when a `CleverDict` value is *created or changed*, for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...  You just need to overwrite the `CleverDict.save` method with your own one:
+You can set pretty much any function to be run **automatically** when a `CleverDict` value is *created, changed, or delete*, for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...
+
+This can be enabled at a *class* level, or by creating subclasses of `CleverDict` with different options, or an *object/instance* level.  We strongly recommend the **latter**, but you have the choice.
+
+**Autosaving a particular object/instance**
+
+    >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"},
+        save=example_save_function)
+    # Or:
+    >>> x.set_save(example_save_function)
+
+    >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"},
+        delete=example_delete_function)
+
+**Autosaving at a class level **
 
     >>> CleverDict.save = your_save_function
+    >>> CleverDict.save = your_save_function
+
+
 
 Similarly the `CleverDict.delete` method is called automatically when an attribute or value is *deleted*.  Like `.save`, it does nothing by default, but you can overwrite it with your own function e.g. for popping up a confirmation request or notification, creating a backup before deleting a record from your database, config file, cloud storage etc.
 
