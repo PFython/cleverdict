@@ -97,7 +97,7 @@ manager now restores the CleverDict.expand setting correctly upon exiting.
 
 Expansion can now be controlled by CleverDict.expand, instead of cleverdict.expand.
 
-The __repr__ method now provides the vars as well, thus showing attributes set with set_attr_direct also
+The __repr__ method now provides the vars as well, thus showing attributes set with setattr_direct also
 The __repr__ method output is more readable
 
 In order to support evalation from __repr__, the __init__ method has been changed.
@@ -106,6 +106,7 @@ The implemenation of several methods is more compact and more stable by reusing 
 
 More and improved tests.
 """
+
 
 def save(self, name=None, value=None):
     """
@@ -117,7 +118,8 @@ def save(self, name=None, value=None):
     """
     pass
 
-def delete(self, name=None, value=None):
+
+def delete(self, name=None):  # Ruud value removed !
     """
     Called every time a CleverDict key/attribute is deleted.  Overwrite with your
     own custome delete() method e.g. to automatically delete values from
@@ -126,6 +128,7 @@ def delete(self, name=None, value=None):
     CleverDict.delete = custom_delete_method
     """
     pass
+
 
 class Expand:
     def __init__(self, ok):
@@ -182,8 +185,10 @@ class CleverDict(dict):
             key: attribute which, when set, will *not* become an item of the Clever Dictionary.
             value : value of this attribute.
     """
-    original_save = save = save
+
+    original_save = save = save  #
     original_delete = delete = delete
+
     # Always ignore these objects (incl. methods and non JSON serialisables)
     ignore = {"_aliases", "save_path", "save", "delete"}
 
@@ -200,9 +205,9 @@ class CleverDict(dict):
         if savefunc is None:
             savefunc = CleverDict.original_save
         params = tuple(list(inspect.signature(savefunc).parameters.keys())[1:])
-        if params!= ('name', 'value'):
+        if params != ("name", "value"):
             raise TypeError(f"save function signature not (name, value), but ({', '.join(params)})")
-        super().__setattr__("save",  types.MethodType(savefunc, CleverDict))
+        super().__setattr__("save", types.MethodType(savefunc, CleverDict))
 
     def set_delete(self, deletefunc=None):
         """
@@ -217,10 +222,10 @@ class CleverDict(dict):
         if deletefunc is None:
             deletefunc = CleverDict.original_delete
         params = tuple(list(inspect.signature(deletefunc).parameters.keys())[1:])
-        if 'name' not in params:
-            print(params)
+        if params != ("name",):  # Ruud changed back as your code is not exhaustive
+            #            print(params)  # removed
             raise TypeError(f"delete function signature not (name), but ({', '.join(params)})")
-        super().__setattr__("delete",  types.MethodType(deletefunc, CleverDict))
+        super().__setattr__("delete", types.MethodType(deletefunc, CleverDict))
 
     expand = True  # Used by .delete_alias
 
@@ -260,9 +265,10 @@ class CleverDict(dict):
             raise AttributeError(e)
 
     def __delitem__(self, name):
-        self.delete(name=name)
         name = self.get_key(name)
         super().__delitem__(name)
+        self.delete(name=name)  # Ruud changed order
+
         for ak, av in list(self._aliases.items()):
             if av == name:
                 del self._aliases[ak]
@@ -272,8 +278,8 @@ class CleverDict(dict):
             del self[name]
         except KeyError as e:
             if hasattr(self, name):
-                self.delete(name=name)
                 super().__delattr__(name)
+                self.delete(name=name)  # Ruud changed order
             else:
                 raise AttributeError(e)
 
@@ -287,9 +293,7 @@ class CleverDict(dict):
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
         _mapping = self.filtered_mapping(ignore)
-        _aliases = {
-            k: v for k, v in self._aliases.items() if k not in self and v in _mapping
-        }
+        _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
@@ -300,7 +304,6 @@ class CleverDict(dict):
         """
         return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore}
 
-
     def _add_alias(self, name, alias):
         """
         Internal method for error handling while adding and alias, and finally
@@ -309,9 +312,7 @@ class CleverDict(dict):
         Used by add_alias, __init__ and __setattr__.
         """
         if alias in self._aliases and self._aliases[alias] != name:
-            raise KeyError(
-                f"{repr(alias)} already an alias for {repr(self._aliases[alias])}"
-            )
+            raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
         self._aliases[alias] = name
 
     def update(self, _mapping=(), **kwargs):
@@ -408,7 +409,7 @@ class CleverDict(dict):
         ----------
         start_key: int | str
             The key (or alias) to start at.
-            Useful for 'human' counting i.e. starting at 1 not 0.
+            Useful for 'human' counting i.e. starting at 1 not 0.  # Ruud I find this description very confusing. Has nothing to do with counting!
             Also allows for keys/aliases to be references e.g. "Footnote"
         ignore: list
             Any keys/aliases to ignore from output.  Ignoring an alias ignored
@@ -426,10 +427,10 @@ class CleverDict(dict):
             except KeyError:
                 raise
         lines = {}
-        for k,v in to_save.items():
+        for k, v in to_save.items():
             if k != start_key and not lines:
                 continue
-            lines.update({k:v})
+            lines.update({k: v})
         lines = "\n".join(lines.values())
         if not file_path:
             return lines
@@ -506,35 +507,23 @@ class CleverDict(dict):
         if ignore is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
-        if fullcopy is True:
-            ignore.remove("_aliases")
+        #        if fullcopy:  # Ruud you shouldn't use is True
+        #            ignore.remove("_aliases")  # Ruud _aliases should be excluded !
         _mapping = self.filtered_mapping(ignore)
 
         if not fullcopy:
             json_str = json.dumps(_mapping, indent=4)
         else:
-            _aliases = {
-                k: v
-                for k, v in self._aliases.items()
-                if k not in self and v in _mapping
-            }
+            _aliases = {k: v for k, v in self._aliases.items() if k not in self and v in _mapping}
             _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
-            _aliases = {k: v for k, v in _aliases.items() if k!=v}
+            _aliases = {k: v for k, v in _aliases.items() if k != v}
             _vars = {k: v for k, v in vars(self).items() if k not in ignore}
-            json_str = json.dumps(
-                {
-                    "_mapping_encoded": _mapping_encoded,
-                    "_aliases": _aliases,
-                    "_vars": _vars,
-                },
-                indent=4,
-            )
+            json_str = json.dumps({"_mapping_encoded": _mapping_encoded, "_aliases": _aliases, "_vars": _vars}, indent=4)
         if file_path:
             with open(Path(file_path), "w", encoding="utf-8") as file:
                 file.write(json_str)
         else:
             return json_str
-
 
     def autosave(self, fullcopy=False, silent=False):
         """Toggles autosave to a config file.
@@ -570,19 +559,18 @@ class CleverDict(dict):
                 self.create_save_file()
             # Save and delete events trigger a call to the same method:
             if fullcopy:
-                super().__setattr__("save",  types.MethodType(CleverDict._auto_save_fullcopy, self))
-                super().__setattr__("delete",  types.MethodType(CleverDict._auto_save_fullcopy, self))
+                super().__setattr__("save", types.MethodType(CleverDict._auto_save_fullcopy, self))
+                super().__setattr__("delete", types.MethodType(CleverDict._auto_save_fullcopy, self))
                 # self.set_save(self._auto_save_fullcopy)
                 # self.set_delete(self._auto_save_fullcopy)
             else:
-                super().__setattr__("save",  types.MethodType(CleverDict._auto_save_data, self))
-                super().__setattr__("delete",  types.MethodType(CleverDict._auto_save_data, self))
+                super().__setattr__("save", types.MethodType(CleverDict._auto_save_data, self))
+                super().__setattr__("delete", types.MethodType(CleverDict._auto_save_data, self))
                 # self.set_save(self._auto_save_data)
                 # self.set_delete(self._auto_save_data)
             self.save(name=None, value=None)
             if not silent:
                 print(f"\n ⚠  Autosaving to:\n  {path}\n")
-
 
     def _auto_save_data(self, name=None, value=None):
         """
@@ -645,10 +633,9 @@ class CleverDict(dict):
         -------
         None
         """
-        if name not in CleverDict.ignore:
-            self.save(name, value)
         super().__setattr__(name, value)
-        self.save(name=name, value=value)
+        if name not in CleverDict.ignore:  # changed the order
+            self.save(name, value)
 
     def get_key(self, name):
         """
@@ -754,9 +741,7 @@ class CleverDict(dict):
                 raise KeyError(f"primary key {repr(al)} can't be deleted")
             del self._aliases[al]
             for alx in all_aliases(al):
-                if (
-                    alx in list(self._aliases.keys())[1:]
-                ):  # ignore the key, which is at the front of ._aliases
+                if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
                     del self._aliases[alx]
         self.save(name=alias, value=None)
 
@@ -772,9 +757,7 @@ class CleverDict(dict):
         if ids:
             if len(ids) > 1:
                 result.append(indent + " is ".join(ids))
-            id = ids[
-                0
-            ]  # If more than one variable has the same name, use the first in the list
+            id = ids[0]  # If more than one variable has the same name, use the first in the list
         else:
             id = "x"
         if ignore is None:
@@ -787,12 +770,7 @@ class CleverDict(dict):
                 if av == k:
                     parts.append(f"{id}[{repr(ak)}]")
             for ak, av in self._aliases.items():
-                if (
-                    av == k
-                    and isinstance(ak, str)
-                    and ak.isidentifier()
-                    and not keyword.iskeyword(ak)
-                ):
+                if av == k and isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
                     parts.append(f"{id}.{ak}")
             parts.append(f"{repr(v)}")
             result.append(indent + " == ".join(parts))
@@ -840,10 +818,7 @@ def all_aliases(name):
             else:
                 norm_name = name
 
-            norm_name = "".join(
-                ch if ("A"[:i] + ch).isidentifier() else "_"
-                for i, ch in enumerate(norm_name)
-            )
+            norm_name = "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(norm_name))
             if name != norm_name:
                 result.append(norm_name)
     return result
@@ -858,9 +833,7 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     CYGWIN = sys.platform.startswith("cygwin")
     MSYS2 = sys.platform.startswith("win") and ("GCC" in sys.version)
     # Determine local App Engine environment, per Google's own suggestion
-    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get(
-        "SERVER_SOFTWARE", ""
-    )
+    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get("SERVER_SOFTWARE", "")
     WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
 
     def _posixify(name):
@@ -875,10 +848,6 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     if force_posix:
         return os.path.join(os.path.expanduser("~/.{}".format(_posixify(app_name))))
     if sys.platform == "darwin":
-        return os.path.join(
-            os.path.expanduser("~/Library/Application Support"), app_name
-        )
-    return os.path.join(
-        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-        _posixify(app_name),
-    )
+        return os.path.join(os.path.expanduser("~/Library/Application Support"), app_name)
+    return os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), _posixify(app_name))
+

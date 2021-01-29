@@ -7,6 +7,7 @@ from textwrap import dedent
 import json
 from pathlib import Path
 
+
 def example_save_function(self, name=None, value=None):
     """
     Example of a custom function which can be called by self._save()
@@ -20,20 +21,26 @@ def example_save_function(self, name=None, value=None):
         with open("example.log", "a") as file:
             file.write(output + "\n")
 
+
 def invalid_save_function(self, key, value):
     pass
 
 
-def example_delete_function(self, name=None, value=None):
+def example_delete_function(self, name=None):  # Ruud removed value !
     """ Example """
     output = f"Notional DELETE to database: .{name}"
     with open("example.log", "a") as file:
         file.write(output + "\n")
 
+
+def invalid_delete_function(self, name, value):
+    pass
+
+
 def get_data(path):
-            with open(path, "r") as file:
-                data = file.read()
-            return data
+    with open(path, "r") as file:
+        data = file.read()
+    return data
 
 
 def delete_log():
@@ -42,6 +49,7 @@ def delete_log():
         return True
     except FileNotFoundError:
         return False
+
 
 class Test_Initialisation:
     def test_creation_using_existing_dict(self):
@@ -224,14 +232,9 @@ CleverDict:
 """
         )
         z = b = a = c = CleverDict.fromkeys(["a"], "A")
-        assert (
-            c.info(as_str=True)
-            == "CleverDict:\n    a is b is z\n    a['a'] == a.a == 'A'"
-        )
+        assert c.info(as_str=True) == "CleverDict:\n    a is b is z\n    a['a'] == a.a == 'A'"
         del a
-        assert (
-            c.info(as_str=True) == "CleverDict:\n    b is z\n    b['a'] == b.a == 'A'"
-        )
+        assert c.info(as_str=True) == "CleverDict:\n    b is z\n    b['a'] == b.a == 'A'"
         del b
         assert c.info(as_str=True) == "CleverDict:\n    z['a'] == z.a == 'A'"
         del z
@@ -248,20 +251,20 @@ class Test_Misc:
         d[5] = "vijf"
         d[6] = "zes"
         d[7] = "zeven"
-        d.add_alias(1,"one")
-        d.add_alias(2,"two")
-        d.add_alias(3,"three")
-        d.add_alias(4,"four")
-        d.add_alias(5,"five")
-        d.add_alias(6,"six")
-        d.add_alias(7,"7")
+        d.add_alias(1, "one")
+        d.add_alias(2, "two")
+        d.add_alias(3, "three")
+        d.add_alias(4, "four")
+        d.add_alias(5, "five")
+        d.add_alias(6, "six")
+        d.add_alias(7, "7")
         # default start_key == first alias
         assert d.to_lines() == "een\ntwee\ndrie\nvier\nvijf\nzes\nzeven"
         assert d.to_lines(start_key=4) == "vier\nvijf\nzes\nzeven"
         assert d.to_lines(start_key="7") == "zeven"
-        d_nul = CleverDict({0:"nul"})
+        d_nul = CleverDict({0: "nul"})
         d_nul.update(d)
-        d_nul.add_alias(0,"zero")
+        d_nul.add_alias(0, "zero")
         assert d_nul.to_lines() == "nul\neen\ntwee\ndrie\nvier\nvijf\nzes\nzeven"
         with pytest.raises(KeyError):
             assert d.to_lines(start_key=999)
@@ -285,15 +288,9 @@ class Test_Misc:
         del result[7]
         result["7"] = "zeven"
         assert CleverDict.from_json(d.to_json()) == result
-        assert CleverDict.from_json(d.to_json(ignore=["one"])) == eval(
-            result.__repr__(ignore=["one"])
-        )
-        assert CleverDict.from_json(d.to_json(ignore=["one", "two"])) == eval(
-            result.__repr__(ignore=["one", "two"])
-        )
-        assert CleverDict.from_json(d.to_json(ignore=["one", 7])) == eval(
-            result.__repr__(ignore=["one", "7"])
-        )
+        assert CleverDict.from_json(d.to_json(ignore=["one"])) == eval(result.__repr__(ignore=["one"]))
+        assert CleverDict.from_json(d.to_json(ignore=["one", "two"])) == eval(result.__repr__(ignore=["one", "two"]))
+        assert CleverDict.from_json(d.to_json(ignore=["one", 7])) == eval(result.__repr__(ignore=["one", "7"]))
 
     def test_from_lines(self, tmpdir):
         d0 = CleverDict()
@@ -311,9 +308,9 @@ class Test_Misc:
         file_path = Path(tmpdir) / "tmp.txt"
         d0.to_lines(file_path=file_path, start_key=0)
         d = CleverDict.from_lines(file_path=file_path, start_key=0)
-        assert d.to_dict() == {0: 'alpha', 1: 'beta', 2: 'gamma', 3: 'delta', 4: 'epsilon'}
+        assert d.to_dict() == {0: "alpha", 1: "beta", 2: "gamma", 3: "delta", 4: "epsilon"}
         d = CleverDict.from_lines(file_path=file_path, start_key=10)
-        assert d.to_dict() == {10: 'alpha', 11: 'beta', 12: 'gamma', 13: 'delta', 14: 'epsilon'}
+        assert d.to_dict() == {10: "alpha", 11: "beta", 12: "gamma", 13: "delta", 14: "epsilon"}
 
         with pytest.raises(TypeError):
             d = CleverDict.from_lines(file_path=file_path, start_key="10")
@@ -454,9 +451,7 @@ class Test_Misc:
             assert file.read() == info
         path.unlink()
         # when called a second time, should be different:
-        assert (
-            CleverDict.get_new_save_path() != path
-        )
+        assert CleverDict.get_new_save_path() != path
 
     def test_get_app_dir(self):
         """
@@ -465,6 +460,7 @@ class Test_Misc:
         """
         try:
             import click
+
             assert click.get_app_dir("x") == cleverdict.get_app_dir("x")
         except ModuleNotFoundError:
             pytest.skip("could not import click")
@@ -595,9 +591,7 @@ class Test_Internal_Logic:
         x = CleverDict.fromkeys((0, 1, 2, "a", "what?", "return"), 0)
         y = CleverDict({0: 2, "c": 3})
         x.update(y)
-        assert x == CleverDict(
-            {0: 2, 1: 0, 2: 0, "a": 0, "what?": 0, "return": 0, "c": 3}
-        )
+        assert x == CleverDict({0: 2, 1: 0, 2: 0, "a": 0, "what?": 0, "return": 0, "c": 3})
 
     def test_del(self):
         """ __delattr__ should delete dict items regardless of alias """
@@ -708,6 +702,7 @@ class Test_Internal_Logic:
             x.get_key("a")
         assert x.get_aliases() == []
 
+
 class Test_Save_Functionality:
     def test_save_on_creation1(self):
         """ Once set, CleverDict.save should be called on creation """
@@ -716,10 +711,7 @@ class Test_Save_Functionality:
         x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         assert x.save.__name__ == "example_save_function"
         log = get_data("example.log")
-        assert (
-            log
-            == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
-        )
+        assert log == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         assert delete_log()
         CleverDict.save = CleverDict.original_save
         assert x.save.__name__ == "save"
@@ -731,10 +723,7 @@ class Test_Save_Functionality:
         x = CleverDict({"total": 6, "usergroup": "Knights of Ni"}, save=example_save_function)
         assert x.save.__name__ == "example_save_function"
         log = get_data("example.log")
-        assert (
-            log
-            == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
-        )
+        assert log == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         assert delete_log()
         x.set_save()
         assert not delete_log()
@@ -746,6 +735,9 @@ class Test_Save_Functionality:
         with pytest.raises(TypeError):
             x.set_save(invalid_save_function)
         assert not delete_log()
+        with pytest.raises(TypeError):
+            x.set_delete(invalid_save_function)
+        assert not delete_log()
 
     def test_save_on_creation4(self):
         delete_log()
@@ -755,14 +747,10 @@ class Test_Save_Functionality:
         x["total"] = 6
         x["usergroup"] = "Knights of Ni"
         log = get_data("example.log")
-        assert (
-            log
-            == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
-        )
+        assert log == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         assert delete_log()
         x.set_save()
         assert x.save.__name__ == "save"
-
 
     def test_save_on_update(self):
         """ Once set, CleverDict.save should be called after updates """
@@ -782,7 +770,7 @@ class Test_Save_Functionality:
                 super().__init__(*args, **kwargs)
 
             def save(self, name, value):
-                if name not in ('_aliases', 'store'):
+                if name not in ("_aliases", "store"):
                     self.store.append((name, value))
 
         x = SaveDict({"a": 1, 2: 2})
@@ -803,18 +791,8 @@ class Test_Save_Functionality:
         except KeyError:
             pass
 
-        assert x.store == [
-            ("a", 1),
-            (2, 2),
-            ("b", 3),
-            ("c", 4),
-            (3, 5),
-            (3, 6),
-            (3, 7),
-            (3, 8),
-            ("_4", 9),
-            ("_4", 10),
-        ]
+        assert x.store == [("a", 1), (2, 2), ("b", 3), ("c", 4), (3, 5), (3, 6), (3, 7), (3, 8), ("_4", 9), ("_4", 10)]
+
 
 class Test_Delete_Functionality:
     def test_delete_on_creation1(self):
@@ -825,7 +803,7 @@ class Test_Delete_Functionality:
         assert x.delete.__name__ == "example_delete_function"
         del x["usergroup"]
         log = get_data("example.log")
-        assert log == 'Notional DELETE to database: .usergroup\n'
+        assert log == "Notional DELETE to database: .usergroup\n"
         CleverDict.delete = CleverDict.original_delete
         assert x.delete.__name__ == "delete"
         assert delete_log()
@@ -837,12 +815,13 @@ class Test_Delete_Functionality:
         assert x.delete.__name__ == "example_delete_function"
         del x.total
         log = get_data("example.log")
-        assert log == 'Notional DELETE to database: .total\n'
+        assert log == "Notional DELETE to database: .total\n"
         assert delete_log()
         assert x.delete.__name__ == "example_delete_function"
         x.set_delete()
         assert not delete_log()
         assert x.delete.__name__ == "delete"
+
 
 class Test_README_examples:
     def test_BASIC_USE_1(self):
@@ -892,18 +871,12 @@ class Test_README_examples:
 
     def test_IMPORT_EXPORT_3(self):
         x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
-        assert (
-            repr(x)
-            == "CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})"
-        )
+        assert repr(x) == "CleverDict({'Abigail': 'Year 9', 'Tino': 'Year 9', 'Isaac': 'Year 9'}, _aliases={}, _vars={})"
 
     def test_IMPORT_EXPORT_4(self):
         x = CleverDict({1: "one", 2: "two"})
         y = CleverDict(x)
-        assert (
-            repr(y)
-            == "CleverDict({1: 'one', 2: 'two'}, _aliases={'_1': 1, '_True': 1, '_2': 2}, _vars={})"
-        )
+        assert repr(y) == "CleverDict({1: 'one', 2: 'two'}, _aliases={'_1': 1, '_True': 1, '_2': 2}, _vars={})"
         assert list(y.items()) == [(1, "one"), (2, "two")]
 
     def test_IMPORT_EXPORT_5(self):
@@ -919,10 +892,7 @@ class Test_README_examples:
     def test_IMPORT_EXPORT_7(self):
         json_data = '{"None": null}'
         x = CleverDict.from_json(json_data)
-        assert (
-            repr(x)
-            == "CleverDict({'None': None}, _aliases={'_None': 'None'}, _vars={})"
-        )
+        assert repr(x) == "CleverDict({'None': None}, _aliases={'_None': 'None'}, _vars={})"
         x.to_json(file_path="mydata.json")
         y = CleverDict.from_json(file_path="mydata.json")
         assert x == y
@@ -938,16 +908,14 @@ class Test_README_examples:
         x.to_lines(file_path="lines.txt", start_key=1)
         with open("lines.txt", "r") as file:
             data = file.read()
-        assert data == 'This is my first line\nMy second...\n\n\n\n\nMy LAST\n'
+        assert data == "This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
         os.remove("lines.txt")
 
     def test_IMPORT_EXPORT_9(self):
         lines = "This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
         x = CleverDict.from_lines(lines)  # start_key=1 by default
         x.password = "Top Secret - don't ever save to file!"
-        assert (
-            x.to_lines(start_key=7) == "My LAST\n\nTop Secret - don't ever save to file!"
-        )
+        assert x.to_lines(start_key=7) == "My LAST\n\nTop Secret - don't ever save to file!"
         assert x.to_lines(start_key=7, ignore=["password"]) == "My LAST\n"
 
     def test_IMPORT_EXPORT_10(self):
@@ -956,21 +924,18 @@ class Test_README_examples:
         x.add_alias(7, "The End")
         new_lines = x.to_lines(start_key="The End")
         x.footnote1 = "Source: Wikipedia"
-        x.update({9:"All references to living persons are accidental"})
+        x.update({9: "All references to living persons are accidental"})
         new_lines = x.to_lines(start_key="footnote1")
-        assert new_lines == 'Source: Wikipedia\nAll references to living persons are accidental'
+        assert new_lines == "Source: Wikipedia\nAll references to living persons are accidental"
 
     def test_NAMES_AND_ALIASES_1(self):
         x = CleverDict({7: "Seven"})
         assert x._7 == "Seven"
         assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})"
         x.add_alias(7, "NumberSeven")
-        assert x._aliases == {7: 7, '_7': 7, 'NumberSeven': 7}
+        assert x._aliases == {7: 7, "_7": 7, "NumberSeven": 7}
         x.add_alias(7, "zeven")
-        assert (
-            repr(x)
-            == "CleverDict({7: 'Seven'}, _aliases={'_7': 7, 'NumberSeven': 7, 'zeven': 7}, _vars={})"
-        )
+        assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7, 'NumberSeven': 7, 'zeven': 7}, _vars={})"
         assert x.get_aliases() == [7, "_7", "NumberSeven", "zeven"]
         assert x.info("as_str", ignore=[7]) == "CleverDict:"
         assert x.to_dict(ignore=["zeven"]) == {}
@@ -999,15 +964,12 @@ class Test_README_examples:
 
     def test_ATTRIBUTE_NAMES_4(self):
         x = y = z = CleverDict({1: "one", True: "the truth"})
-        assert (
-            x.info("as_str")
-            == "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
-        )
+        assert x.info("as_str") == "CleverDict:\n    x is y is z\n    x[1] == x['_1'] == x['_True'] == x._1 == x._True == 'the truth'"
 
     def test_SETTING_ATTRIBUTES_DIRECTLY_1(self):
         x = CleverDict()
         x.setattr_direct("direct", True)
-        assert x._vars == {'direct': True}
+        assert x._vars == {"direct": True}
         assert repr(x) == "CleverDict({}, _aliases={}, _vars={'direct': True})"
         x.to_json(file_path="mydata.json", fullcopy=True)
         y = CleverDict.from_json(file_path="mydata.json")
@@ -1016,7 +978,7 @@ class Test_README_examples:
         j = x.to_json(fullcopy=True)
         assert (
             j
-            == '{\n    "_mapping_encoded": {},\n    "_aliases": {},\n    "_vars": {\n        "_aliases": {},\n        "direct": true\n    }\n}'
+            == '{\n    "_mapping_encoded": {},\n    "_aliases": {},\n    "_vars": {\n        "direct": true\n    }\n}'  # Ruud changed incorrect expected outcome
         )
         y = CleverDict.from_json(j)
         assert y == x
@@ -1042,8 +1004,8 @@ class Test_README_examples:
         x.autosave(silent=True, fullcopy=True)
         assert path != x.save_path  # New file with new autosave instruction
         path = x.save_path
-        assert x.save.__name__ == '_auto_save_fullcopy'
-        assert x.delete.__name__ == '_auto_save_fullcopy'
+        assert x.save.__name__ == "_auto_save_fullcopy"
+        assert x.delete.__name__ == "_auto_save_fullcopy"
 
     def test_AUTOSAVE_3(self):
         """ .add_alias triggers autosave """
@@ -1078,8 +1040,8 @@ class Test_README_examples:
         """ 'off' reverts to inactive default save behaviour """
         x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
         x.autosave(silent=True)
-        assert x.save.__name__ == '_auto_save_data'
-        assert x.delete.__name__ == '_auto_save_data'
+        assert x.save.__name__ == "_auto_save_data"
+        assert x.delete.__name__ == "_auto_save_data"
         assert hasattr(x, "save_path")
         assert x.save_path.is_file()
         os.remove(x.save_path)
@@ -1088,8 +1050,8 @@ class Test_README_examples:
         assert x.delete.__name__ == "delete"
         assert not hasattr(x, "save_path")
         x.autosave(silent=True, fullcopy=True)
-        assert x.save.__name__ == '_auto_save_fullcopy'
-        assert x.delete.__name__ == '_auto_save_fullcopy'
+        assert x.save.__name__ == "_auto_save_fullcopy"
+        assert x.delete.__name__ == "_auto_save_fullcopy"
         assert hasattr(x, "save_path")
         assert x.save_path.is_file()
         os.remove(x.save_path)
@@ -1100,24 +1062,23 @@ class Test_README_examples:
     def test_YOUR_OWN_AUTOSAVE_1(self):
         def your_save_function(self, name, value):
             """ Custom save function by you """
-            print(
-                f" ⓘ  .{name} (object type: {self.__class__.__name__}) = {value} {type(value)}"
-            )
+            print(f" ⓘ  .{name} (object type: {self.__class__.__name__}) = {value} {type(value)}")
 
         CleverDict.save = your_save_function
-        x = CleverDict()  #Ruud output should be checked in the test!
+        x = CleverDict()  # Ruud output should be checked in the test!
         assert x.save.__doc__ == " Custom save function by you "
+        CleverDict.save = CleverDict.original_save  # Ruud you had forgotten to turn it off. That's why per instance saving should be recommended!
 
     def test_YOUR_OWN_AUTOSAVE_2(self):
         class Type1(CleverDict):
-
             def __init__(self, *args, **kwargs):
                 self.setattr_direct("index", [])
                 super().__init__(*args, **kwargs)
 
             def save(self, name, value):
-                if name not in ('_aliases', 'index'):
+                if name not in ("_aliases", "index"):
                     self.index.append((name, value))
+
         x = Type1(data="Useless information")
         assert x.index == [("data", "Useless information")]
 
@@ -1131,14 +1092,8 @@ class Test_README_examples:
                 Movie.index += [self]
 
         x = Movie("The Wizard of Oz")
-        assert (
-            repr(Movie.index)
-            == "[Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]"
-        )
-        assert (
-            x.info("as_str")
-            == "Movie:\n    x['title'] == x.title == 'The Wizard of Oz'"
-        )
+        assert repr(Movie.index) == "[Movie({'title': 'The Wizard of Oz'}, _aliases={}, _vars={})]"
+        assert x.info(as_str=True) == "Movie:\n    x['title'] == x.title == 'The Wizard of Oz'"  # Ruud
 
 
 if __name__ == "__main__":
