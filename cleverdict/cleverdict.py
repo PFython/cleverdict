@@ -524,7 +524,7 @@ class CleverDict(dict):
         for al in alias:
             for name in all_aliases(al):
                 self._add_alias(key, name)
-        self.save(name=name, value=alias)
+        self.save(name=None, value=None)
 
     def delete_alias(self, alias):
         """
@@ -560,7 +560,7 @@ class CleverDict(dict):
                 # Ignore the key, which is at the front of ._aliases:
                 if alx in list(self._aliases.keys())[1:]:
                     del self._aliases[alx]
-        self.save(name=alias, value=None)
+        self.save(name=None, value=None)
 
 
     def setattr_direct(self, name, value):

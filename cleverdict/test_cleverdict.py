@@ -1056,6 +1056,39 @@ class Test_README_examples:
         assert x.save.__name__ == "save"
         assert x.delete.__name__ == "delete"
 
+    def test_AUTOSAVE_7(self):
+        """
+        There might be a complicated problem when autosaving an inherited CleverDict. The super() might refer to CleverDict and might cause issues
+        """
+        x = CleverDict({"total":6, "usergroup": "Knights of Ni"})
+        x.add_alias("usergroup", "knights")
+        x.setattr_direct("Quest", "The Holy Grail")
+        x.to_json(file_path="mydata.json", fullcopy=True)
+        y = CleverDict.from_json(file_path="mydata.json")
+        assert y.save.__name__ == 'save'
+        y.autosave(fullcopy=True, silent=True)
+        assert y.save.__name__ == '_auto_save_fullcopy'
+        assert "knights" in y._aliases
+        assert '"knights": "usergroup"' in get_data(y.save_path)
+        y.delete_alias("knights")
+        assert "knights" not in y._aliases
+        assert '"knights": "usergroup"' not in get_data(y.save_path)
+        assert y.Quest == "The Holy Grail"
+        y.Quest = "Never completed"
+        assert y.Quest == "Never completed"
+
+
+    def test_SETATTR_UPDATES(self):
+        """ Once created with setattr_direct, items in vars should update
+        in the normal way """
+        x = CleverDict({"total":6, "usergroup": "Knights of Ni"})
+        x.setattr_direct("Quest", "The Holy Grail")
+        x.Quest = "Complete!"
+        assert x.Quest == "Complete!"
+        x.Quest += "\nHurrah!"
+        assert x.Quest == "Complete!\nHurrah!"
+
+
     def test_YOUR_OWN_AUTOSAVE_1(self):
         def your_save_function(self, name, value):
             """ Custom save function by you """
@@ -1078,6 +1111,7 @@ class Test_README_examples:
 
         x = Type1(data="Useless information")
         assert x.index == [("data", "Useless information")]
+
 
     def test_SUBCLASSING_1(self):
         class Movie(CleverDict):

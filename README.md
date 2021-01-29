@@ -417,6 +417,10 @@ To deactivate `.save()` or `.delete()` separately:
     >>> x.set_save()
     >>> x.set_deleve()
 
+> If you want to periodically open the `CleverDict` save folder to check for orphaned `.json` files from time to time, a handy shortcut is:
+
+    >>> import webbrowser
+    >>> webbrowser.open(x.save_path.parent)
 
 ## 9. CREATING YOUR OWN AUTO-SAVE/AUTO-DELETE FUNCTION
 
