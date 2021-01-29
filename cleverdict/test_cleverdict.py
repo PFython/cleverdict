@@ -209,6 +209,9 @@ class Test_Core_Features:
         # can't double assign
         with pytest.raises(KeyError):
             x["+1"] = 1
+        x.setattr_direct("who", "Peter")
+        x.who = "Ruud"
+        assert x.who == "Ruud"
 
     def test_info(self, capsys):
         global c  # globals are not 'seen' by info()
