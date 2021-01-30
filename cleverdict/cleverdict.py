@@ -1,12 +1,40 @@
+import os
+import json
 import inspect
 import keyword
 import itertools
-
-__version__ = "1.7.2"
+from pathlib import Path
+from pprint import pprint
+from datetime import datetime
+import types
+import inspect
 
 """
 Change log
 ==========
+
+version 1.8
+---------------------------
+Added to_json() and from_json()
+Added to_lines() and from_lines()
+Added to_dict()
+Added set_autosave (which works on individual objects, not the whole class)
+Added set_autodelete (which works on individual objects, not the whole class)
+Added autosave (which works on individual objects, not the whole class)
+Added the ability to fully recreate aCleverDict with to_json(fullcopy=True)
+Added cartoon!
+Added logo!
+Removed dependency on click
+Revamped README
+Removed identify_self()
+Removed print output except for for autosave, but with 'silent' option
+delattr removes attributes created using setattr_direct
+Attributes created using setattr_direct update correctly.
+Applied ignore=[] to: to_lines, to_list, to_json, info, to_dict, and repr
+More consistent repr
+._aliases and ._vars accessible as regular attributes
+Substantially more and better tests
+
 
 version 1.7.2 2020-11-03
 --------------------------
@@ -17,7 +45,7 @@ Updated setup.py to correct support for Python 3.6+
 
 version 1.7.0 2020-11-01
 --------------------------
-Added methods .fromlist and .tolist
+Added methods .fromlist and .to_list
 Updated test_cleverdict.py
 Updated README
 Updated setup.py to show support for Python 3.2+
@@ -74,7 +102,9 @@ manager now restores the CleverDict.expand setting correctly upon exiting.
 
 Expansion can now be controlled by CleverDict.expand, instead of cleverdict.expand.
 
-The __repr__ method now provides the vars as well, thus showing attributes set with set_attr_direct also
+The __repr__ method now provides the vars as well, thus also showing attributes
+set with setattr_direct.
+
 The __repr__ method output is more readable
 
 In order to support evalation from __repr__, the __init__ method has been changed.
@@ -83,6 +113,126 @@ The implemenation of several methods is more compact and more stable by reusing 
 
 More and improved tests.
 """
+
+
+def save(self, name=None, value=None):
+    """
+    Called every time a CleverDict value is created or change.
+    Overwrite with your own custome save() method e.g. to automatically
+    write values to file/database/cloud, send a notification etc.
+
+    self.set_autosave(your_save_function)
+
+    Parameters
+    ----------
+    name: int | str
+        Dictionary key name or object attribute name.
+    value: any
+        Dictionary value or object.attribute value
+
+    Note
+    ----
+    This function should handle name is None properly.
+    """
+    pass
+
+
+def delete(self, name=None):
+    """
+    Called every time a CleverDict key/attribute is deleted.  Overwrite with your
+    own custome delete() method e.g. to automatically delete values from
+    file/database/cloud, send a confirmation request/notification etc.
+
+    self.set_autosave(your_save_function)
+
+    Parameters
+    ----------
+    name: int | str
+        Dictionary key name or object attribute name.
+
+    Note
+    ----
+    This function should handle name is None properly.
+    """
+    pass
+
+
+def all_aliases(name):
+    """
+    Returns all possible aliases for a given name.
+
+    Parameters
+    ----------
+    name : any
+
+    Return
+    ------
+    Aliases for name : list
+
+    By default the list will start with name, followed by all possible aliases for name.
+    However if CleverDict.expand == False, the list will only contain name.
+
+    CleverDict.expand should preferably be set via the context manager Expand.
+    """
+    result = [name]
+    if CleverDict.expand:
+        if name == hash(name):
+            result.append(f"_{int(name)}")
+            if name in (0, 1):
+                result.append(f"_{bool(name)}")
+        else:
+            if name != str(name):
+                name = str(name)
+                if name.isidentifier() and not keyword.iskeyword(name):
+                    result.append(str(name))
+
+            if not name or name[0].isdigit() or keyword.iskeyword(name):
+                norm_name = "_" + name
+            else:
+                norm_name = name
+
+            norm_name = "".join(
+                ch if ("A"[:i] + ch).isidentifier() else "_"
+                for i, ch in enumerate(norm_name)
+            )
+            if name != norm_name:
+                result.append(norm_name)
+    return result
+
+
+def get_app_dir(app_name, roaming=True, force_posix=False):
+    """
+    This is a self contained copy of click.get_app_dir
+    """
+    import sys
+
+    CYGWIN = sys.platform.startswith("cygwin")
+    MSYS2 = sys.platform.startswith("win") and ("GCC" in sys.version)
+    # Determine local App Engine environment, per Google's own suggestion
+    APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get(
+        "SERVER_SOFTWARE", ""
+    )
+    WIN = sys.platform.startswith("win") and not APP_ENGINE and not MSYS2
+
+    def _posixify(name):
+        return "-".join(name.split()).lower()
+
+    if WIN:
+        key = "APPDATA" if roaming else "LOCALAPPDATA"
+        folder = os.environ.get(key)
+        if folder is None:
+            folder = os.path.expanduser("~")
+        return os.path.join(folder, app_name)
+    if force_posix:
+        return os.path.join(os.path.expanduser("~/.{}".format(_posixify(app_name))))
+    if sys.platform == "darwin":
+        return os.path.join(
+            os.path.expanduser("~/Library/Application Support"), app_name
+        )
+    return os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        _posixify(app_name),
+    )
 
 
 class Expand:
@@ -132,7 +282,7 @@ class CleverDict(dict):
 
     _aliases : dict
         a dictionary that contains items as follows:
-            key : name of a (new) alias.
+            key : name of an alias.
             value : value to which this key belongs. This key *must* be defined!
 
     _vars : dict
@@ -141,11 +291,25 @@ class CleverDict(dict):
             value : value of this attribute.
     """
 
-    expand = True  # Used by .delete_alias
+    # Add .save & / .delete methods and create 'vanilla' copies to revert to
+    original_save = save = save
+    original_delete = delete = delete
 
-    def __init__(self, _mapping=(), _aliases=None, _vars={}, **kwargs):
+    # Always ignore these objects (incl. methods and non JSON serialisables)
+    ignore = {"_aliases", "save_path", "save", "delete"}
+
+    # Used by .delete_alias:
+    expand = True
+
+    def __init__(
+        self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, **kwargs
+    ):
         self.setattr_direct("_aliases", {})
         with Expand(CleverDict.expand if _aliases is None else False):
+            if save is not None:
+                self.set_autosave(save)
+            if delete is not None:
+                self.set_autodelete(delete)
             self.update(_mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
@@ -154,13 +318,16 @@ class CleverDict(dict):
                 self.setattr_direct(k, v)
 
     def __setattr__(self, name, value):
-        if name in self._aliases:
-            name = self._aliases[name]
-        elif name not in self:
-            for al in all_aliases(name):
-                self._add_alias(name, al)
-        super().__setitem__(name, value)
-        self.save(name, value)
+        if name in vars(self).keys():
+            super().__setattr__(name, value)
+        else:
+            if name in self._aliases:
+                name = self._aliases[name]
+            elif name not in self:
+                for al in all_aliases(name):
+                    self._add_alias(name, al)
+            super().__setitem__(name, value)
+        self.save(name=name, value=value)
 
     __setitem__ = __setattr__
 
@@ -174,119 +341,46 @@ class CleverDict(dict):
         except KeyError as e:
             raise AttributeError(e)
 
-    def __delitem__(self, key):
-        key = self.get_key(key)
-        super().__delitem__(key)
+    def __delitem__(self, name):
+        name = self.get_key(name)
+        super().__delitem__(name)
+        self.delete(name=name)
         for ak, av in list(self._aliases.items()):
-            if av == key:
+            if av == name:
                 del self._aliases[ak]
 
-    def __delattr__(self, k):
+    def __delattr__(self, name):
         try:
-            del self[k]
+            del self[name]
         except KeyError as e:
-            raise AttributeError(e)
+            if hasattr(self, name):
+                super().__delattr__(name)
+                self.delete(name=name)
+            else:
+                raise AttributeError(e)
 
     def __eq__(self, other):
         if isinstance(other, CleverDict):
             return self.items() == other.items() and vars(self) == vars(other)
         return NotImplemented
 
-    def __repr__(self):
-        _mapping = dict(self.items())
-        _aliases = {k: v for k, v in self._aliases.items() if k not in self}
-        _vars = {k: v for k, v in vars(self).items() if k != "_aliases"}
+    def __repr__(self, ignore=None):
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | CleverDict.ignore
+        _mapping = self._filtered_mapping(ignore)
+        _aliases = {
+            k: v for k, v in self._aliases.items() if k not in self and v in _mapping
+        }
+        _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
-    def _add_alias(self, name, alias):
+    @property
+    def _vars(self):
         """
-        Internal method for error handling while adding and alias, and finally
-        adding to .alias.
-
-        Used by add_alias, __init__ and __setattr__.
+        Returns a dict of any 'direct' attributes set with .setattr_direct()
         """
-        if alias in self._aliases and self._aliases[alias] != name:
-            raise KeyError(f"{repr(alias)} already an alias for {repr(self._aliases[alias])}")
-        self._aliases[alias] = name
-
-    def update(self, _mapping=(), **kwargs):
-        """
-        Parameters
-        ----------
-        The same as dict.update(), i.e.
-            D.update([E, ]**F) -> None.  Update D from dict/iterable E and F.
-            If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
-            If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
-            In either case, this is followed by: for k in F:  D[k] = F[k]
-        """
-        if hasattr(_mapping, "items"):
-            _mapping = getattr(_mapping, "items")()
-
-        for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
-            self.__setitem__(k, v)
-
-    @classmethod
-    def fromkeys(cls, iterable, value):
-        """
-        Instantiates an object using supplied keys/aliases and values e.g.
-
-        >>> x = CleverDict().fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
-
-        Parameters
-        ----------
-        iterable: iterable
-            used as the keys for the new CleverDict
-
-        value: any
-            used as the values for the new CleverDict
-
-        Returns
-        -------
-        New CleverDict with keys from iterable and values equal to value.
-
-        """
-        return CleverDict({k: value for k in iterable})
-
-    def tolist(self):
-        """
-        Creates a (json-serialisable) list of k,v pairs as a list of tuples.
-        Main use case is Client/Server apps where returning a CleverDict object
-        or a dictionary with numeric keys (which get converted to strings by
-        json.dumps for example).  This output can be used to instantiate a new
-        CleverDict object (e.g. when passing between Client/Server code) using
-        the .fromlist() method.
-
-        Returns
-        -------
-        A list of k,v pairs as a list of tuples e.g.
-        [(1, "one"), (2, "two")]
-
-        """
-        return list(self.items())
-
-    def save(self, name, value):
-        pass
-
-    def setattr_direct(self, name, value):
-        """
-        Sets an attribute directly, i.e. without making it into an item.
-        This can be useful to store save data.
-
-        Used internally to create the _aliases dict.
-
-        Parameters
-        ----------
-        name : str
-            name of attribute to be set
-
-        value : any
-            value of the attribute
-
-        Returns
-        -------
-        None
-        """
-        super().__setattr__(name, value)
+        return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore}
 
     def get_key(self, name):
         """
@@ -308,6 +402,103 @@ class CleverDict(dict):
         if name in self._aliases:
             return self._aliases[name]
         raise KeyError(name)
+
+    def _filtered_mapping(self, ignore):
+        """
+        Internal method
+        The user should use to_dict !
+
+        Returns a dictionary of items not excluded by 'ignore' list
+
+        Parameters
+        ----------
+        ignore: list
+            Any keys or aliases to exclude from output.
+
+        Returns
+        -------
+        Values with keys and aliases from ignore filtered out : dict
+
+        Note
+        ----
+        The CleverDict.ignore items are not filtered out.
+        """
+        mapping = {k: v for k, v in self.items() if k not in ignore}
+        for k, v in self._aliases.items():
+            if k in ignore and v in mapping:
+                del mapping[v]
+        return mapping
+
+    def update(self, _mapping=(), **kwargs):
+        """
+        Parameters
+        ----------
+        The same as dict.update(), i.e.
+            D.update([E, ]**F) -> None.  Update D from dict/iterable E and F.
+            If E is present and has a .keys() method, then does:  for k in E: D[k] = E[k]
+            If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
+            In either case, this is followed by: for k in F:  D[k] = F[k]
+        """
+        if hasattr(_mapping, "items"):
+            _mapping = getattr(_mapping, "items")()
+
+        for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
+            self.__setitem__(k, v)
+
+    def info(self, as_str=False, ignore=None):
+        """
+        Prints or returns a string showing variable name equivalence
+        and object attribute/dictionary key equivalence.
+
+        Parameters
+        ----------
+        as_str : bool
+            if as_str is False, prints the information
+            if as_str is True, returns the information as a string
+
+        Returns
+        -------
+        information (if as_str is True): str
+        None (if as_str is False)
+        """
+        indent = "    "
+        frame = inspect.currentframe().f_back.f_locals
+        ids = sorted(k for k, v in frame.items() if v is self)
+        result = [self.__class__.__name__ + ":"]
+        if ids:
+            if len(ids) > 1:
+                result.append(indent + " is ".join(ids))
+            # If more than one variable has the same name, use the first:
+            id = ids[0]
+        else:
+            id = "x"
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | CleverDict.ignore
+        mapping = self._filtered_mapping(ignore)
+        for k, v in mapping.items():
+            parts = []
+            for ak, av in self._aliases.items():
+                if av == k:
+                    parts.append(f"{id}[{repr(ak)}]")
+            for ak, av in self._aliases.items():
+                if (
+                    av == k
+                    and isinstance(ak, str)
+                    and ak.isidentifier()
+                    and not keyword.iskeyword(ak)
+                ):
+                    parts.append(f"{id}.{ak}")
+            parts.append(f"{repr(v)}")
+            result.append(indent + " == ".join(parts))
+        for k, v in vars(self).items():
+            if k not in ignore:
+                result.append(f"{indent}{id}.{k} == {repr(v)}")
+        output = "\n".join(result)
+        if as_str:
+            return output
+        else:
+            print(output)
 
     _default = object()
 
@@ -331,6 +522,19 @@ class CleverDict(dict):
         else:
             return [ak for ak, av in self._aliases.items() if av == self.get_key(name)]
 
+    def _add_alias(self, name, alias):
+        """
+        Internal method for error handling while adding and alias, and finally
+        adding to .alias.
+
+        Used by add_alias, __init__ and __setattr__.
+        """
+        if alias in self._aliases and self._aliases[alias] != name:
+            raise KeyError(
+                f"{repr(alias)} already an alias for {repr(self._aliases[alias])}"
+            )
+        self._aliases[alias] = name
+
     def add_alias(self, name, alias):
         """
         Adds an alias to a given key/name.
@@ -340,7 +544,7 @@ class CleverDict(dict):
         name : any
             must be an existing key or an alias
 
-        alias : scalar or list of scalar
+        alias : scalar or iterable
             alias(es) to be added to the key
 
         Returns
@@ -359,6 +563,7 @@ class CleverDict(dict):
         for al in alias:
             for name in all_aliases(al):
                 self._add_alias(key, name)
+        self.save(name=None, value=None)
 
     def delete_alias(self, alias):
         """
@@ -369,15 +574,11 @@ class CleverDict(dict):
         alias : scalar or list of scalars
             alias(es) to be deleted
 
-        Returns
-        -------
-        None
-
         Notes
         -----
-        If .exapand == True (the 'normal' case), .delete_alias will remove all
+        If .expand == True (the 'normal' case), .delete_alias will remove all
         the specified alias AND all other aliases (apart from the original key).
-        If .exapand == False (most likely set via the Expand context manager),
+        If .expand == False (most likely set via the Expand context manager),
         .delete_alias will only remove the alias specified.
 
         Keys cannot be deleted.
@@ -391,83 +592,438 @@ class CleverDict(dict):
                 raise KeyError(f"primary key {repr(al)} can't be deleted")
             del self._aliases[al]
             for alx in all_aliases(al):
-                if alx in list(self._aliases.keys())[1:]:  # ignore the key, which is at the front of ._aliases
+                # Ignore the key, which is at the front of ._aliases:
+                if alx in list(self._aliases.keys())[1:]:
                     del self._aliases[alx]
+        self.save(name=None, value=None)
 
-    def info(self, as_str=False):
+    def setattr_direct(self, name, value):
         """
-        Prints or returns a string showing variable name equivalence
-        and object attribute/dictionary key equivalence.
+        Sets an attribute directly, i.e. without making it into an item.
+        This can be useful to store save data.
+
+        Used internally to create the _aliases dict.
+
+        Parameters
+        ----------
+        name : str
+            name of attribute to be set. Should be a name that can be used as an identifier
+
+        value : any
+            value of the attribute
         """
-        indent = "    "
-        frame = inspect.currentframe().f_back.f_locals
-        ids = sorted(k for k, v in frame.items() if v is self)
-        result = [__class__.__name__ + ":"]
-        if ids:
-            if len(ids) > 1:
-                result.append(indent + " is ".join(ids))
-            id = ids[0]  # If more than one variable has the same name, use the first in the list
+        super().__setattr__(name, value)
+        if name not in CleverDict.ignore:
+            self.save(name, value)
+
+    def to_list(self, ignore=None):
+        """
+        Creates a list of k,v pairs as a list of tuples.
+        Main use case is Client/Server apps where returning a CleverDict object
+        or a dictionary with numeric keys (which get converted to strings by
+        json.dumps for example).
+
+        Paramters
+        ---------
+        ignore : iterable
+            Any keys or aliases to exclude from output.
+
+        Returns
+        -------
+        A list of k,v pairs as a list of tuples e.g.
+        [(1, "one"), (2, "two")]
+
+        """
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | CleverDict.ignore
+        mapping = self._filtered_mapping(ignore)
+        return [(k, v) for k, v in mapping.items()]
+
+    def to_dict(self, ignore=None):
+        """
+        Returns a regular dict of the core data dictionary
+
+        Parameters
+        ----------
+        ignore: iterable
+            Any keys or aliases to exclude from output.
+
+        Returns
+        -------
+        dict
+        """
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | CleverDict.ignore
+
+        return self._filtered_mapping(ignore=ignore)
+
+    @classmethod
+    def fromkeys(cls, iterable, value):
+        """
+        Instantiates an object using supplied keys/aliases and values e.g.
+
+        >>> x = CleverDict().fromkeys(["Abigail", "Tino", "Isaac"], "Year 9")
+
+        Parameters
+        ----------
+        iterable: iterable
+            used as the keys for the new CleverDict
+
+        value: any
+            used as the values for the new CleverDict
+
+        Returns
+        -------
+        New CleverDict with keys from iterable and values equal to value.
+        """
+        return CleverDict({k: value for k in iterable})
+
+    def to_lines(self, file_path=None, start_from_key=None, ignore=None):
+        """
+        Creates a line ("\n") delimited string or file using values for lines.
+
+        Parameters
+        ----------
+        start_from_key: int | str
+            The key (or alias) of the first line to export from.  Not to be
+            confused with slicing e.g. x[0] will fail for x = CleverDict({1:1})
+            String keys allow for keys/aliases to be references e.g. "Footnote"
+
+        ignore: list
+            Any keys/aliases to ignore from output.  Ignoring an alias ignores
+            all other aliases and the primary key; likewise ignoring the key.
+
+        file_path: str | pathlib.Path
+            Path to the file (if any) to save to.
+
+        Returns
+        -------
+        values joined by "\n" (if file_path is not specified) : str
+        None (if file_path is specified)
+        """
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | CleverDict.ignore
+        to_save = self._filtered_mapping(ignore)
+        if start_from_key is None:
+            start_from_key = self.get_aliases()[0]
         else:
-            id = "x"
-        for k, v in self.items():
-            parts = []
-            with Expand(True):
-                for ak in all_aliases(k):
-                    parts.append(f"{id}[{repr(ak)}] == ")
-                for ak in all_aliases(k):
-                    if isinstance(ak, str) and ak.isidentifier() and not keyword.iskeyword(ak):
-                        parts.append(f"{id}.{ak} == ")
-            parts.append(f"{repr(v)}")
-            result.append(indent + "".join(parts))
-        for k, v in vars(self).items():
-            if k not in ("_aliases"):
-                result.append(f"{indent}{id}.{k} == {repr(v)}")
-        output = "\n".join(result)
-        if as_str:
-            return output
+            try:
+                start_from_key = self._aliases[start_from_key]
+            except KeyError:
+                raise
+        lines = {}
+        for k, v in to_save.items():
+            if k == start_from_key or lines:
+                lines.update({k: v})
+        lines = "\n".join(lines.values())
+        if not file_path:
+            return lines
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(lines)
+
+    @classmethod
+    def from_lines(cls, lines=None, file_path=None, start_from_key=1):
+        """
+        Creates a new CleverDict object and loads data from a line ('\n')
+        delimited string or file.
+
+        Parameters
+        ----------
+        lines: str
+            Text values separated by "\n"
+
+        file_path: str | pathlib.Path
+            Path to the file (if any) to load from.
+
+        start_from_key: int
+            The  (numeric) key to start the data dictionary with.  Default=1.
+            Typically set to 0 for Pythonic line counting (starting at 0 not 1).
+
+        Returns
+        -------
+        New CleverDict: CleverDict
+
+        Notes
+        -----
+        specifying both lines and file_path raises a ValueError
+        """
+        if not isinstance(start_from_key, int):
+            raise TypeError(".from_lines(start_from_key=) must be an integer")
+        if lines and file_path:
+            raise ValueError("both lines and file_path specified")
+        if not (lines or file_path):
+            raise ValueError("neither lines nor file_path specified")
+        if file_path:
+            with open(file_path, "r", encoding="utf-8") as file:
+                lines = file.read()
+        index = {k + start_from_key: v.strip() for k, v in enumerate(lines.split("\n"))}
+        return cls(index)
+
+    def to_json(self, file_path=None, fullcopy=False, ignore=None):
+
+        """
+        Generates a JSON formatted string representing the CleverDict data and
+        optionally saves to file.
+
+        Parameters
+        ----------
+        file_path: str | pathlib.Path
+            Path to the file (if any) to save to.
+
+        fullcopy: bool
+             Includes ._aliases and ._vars if True
+
+        ignore: list
+            Any keys/aliases to ignore from output.  Ignoring an alias ignores
+            all other aliases and the primary key; likewise ignoring the key.
+
+        Returns
+        -------
+        JSON formatted string if no file_path supplied : str
+        None if file_path is supplied
+
+        Notes
+        -----
+        Derived only from dictionary data if fullcopy==False
+        Includes ._aliases and ._vars if fullcopy==True
+        """
+        if ignore is None:
+            ignore = set()
+        ignore = set(ignore) | CleverDict.ignore
+        _mapping = self._filtered_mapping(ignore)
+
+        if not fullcopy:
+            json_str = json.dumps(_mapping, indent=4)
         else:
-            print(output)
-
-
-def all_aliases(name):
-    """
-    Returns all possible aliases for a given name.
-
-    Parameters
-    ----------
-    name : any
-
-    Return
-    ------
-    Aliases for name : list
-
-    By default the list will start with name, followed by all possible aliases for name.
-    However if CleverDict.expand == False, the list will only contain name.
-
-    CleverDict.expand should preferably be set via the context manager Expand.
-    """
-    result = [name]
-    if CleverDict.expand:
-        if name == hash(name):
-            result.append(f"_{int(name)}")
-            if name in (0, 1):
-                result.append(f"_{bool(name)}")
+            _aliases = {
+                k: v
+                for k, v in self._aliases.items()
+                if k not in self and v in _mapping
+            }
+            _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
+            _aliases = {k: v for k, v in _aliases.items() if k != v}
+            _vars = {k: v for k, v in vars(self).items() if k not in ignore}
+            json_str = json.dumps(
+                {
+                    "_mapping_encoded": _mapping_encoded,
+                    "_aliases": _aliases,
+                    "_vars": _vars,
+                },
+                indent=4,
+            )
+        if file_path:
+            with open(Path(file_path), "w", encoding="utf-8") as file:
+                file.write(json_str)
         else:
-            if name != str(name):
-                name = str(name)
-                if name.isidentifier() and not keyword.iskeyword(name):
-                    result.append(str(name))
+            return json_str
 
-            if not name or name[0].isdigit() or keyword.iskeyword(name):
-                norm_name = "_" + name
+    @classmethod
+    def from_json(cls, json_data=None, file_path=None):
+        """
+        Creates a new CleverDict object and loads data from a JSON object or
+        file.
+
+        Parameters
+        ----------
+        file_path: str | pathlib.Path
+            Path to the file (if any) to save to.
+
+        json_data: str
+            JSON formatted string, typically created by json.dumps() : str
+
+        Returns
+        -------
+        New CleverDict: CleverDict
+        """
+        if json_data and file_path:
+            raise ValueError("both json_data and file_path specified")
+        if not (json_data or file_path):
+            raise ValueError("neither json_data nor file_path specified")
+
+        if file_path:
+            with open(file_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        else:
+            data = json.loads(json_data)
+        if set(data.keys()) == {"_mapping_encoded", "_aliases", "_vars"}:
+            _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
+            _aliases = {k: v for k, v in data["_aliases"].items()}
+            _vars = data["_vars"]
+            return cls(_mapping, _aliases=_aliases, _vars=_vars)
+        else:
+            return cls(data)
+
+    @classmethod
+    def get_new_save_path(cls):
+        """
+        Get Operating System specific default for settings folder;
+        Return a (hopefully) unique filename comprising time and variable name
+
+        e.g. 2020-12-06-03-30-57-892234.json
+        """
+        timestamp = "".join([x if x.isnumeric() else "-" for x in str(datetime.now())])
+        id = f"{timestamp}.json"
+        dir = Path(get_app_dir("CleverDict"))
+        if not dir.is_dir():
+            dir.mkdir(parents=True)
+        return dir / id
+
+    def create_save_file(self):
+        """
+        Creates a skeleton file to store autosave data if one doesn't already exist.
+
+        Directory/folder is created if they don't already exist, based on
+        .save_path
+        An (almost) empty file is created, based on .save_path.name
+        """
+        if self.save_path.is_file():
+            return
+        try:
+            os.makedirs(self.save_path.parent)
+        except FileExistsError:
+            pass
+        with open(self.save_path, "w", encoding="utf-8") as file:
+            file.write('{"empty": True}')
+
+    def set_autosave(self, savefunc=None):
+        """
+        Overwrites the default (dummy) save method of an instance with a new custom function.
+
+        Parameters
+        ----------
+        savefunc: function
+            The new function which will be called whenever values change.
+            If no function specified, resets to original (inactive) method.
+            The function header should be (name, value)
+        """
+        if savefunc is None:
+            savefunc = CleverDict.original_save
+        params = tuple(list(inspect.signature(savefunc).parameters.keys())[1:])
+        if params != ("name", "value"):
+            raise TypeError(
+                f"save function signature not (name, value), but ({', '.join(params)})"
+            )
+        super().__setattr__("save", types.MethodType(savefunc, CleverDict))
+
+    def set_autodelete(self, deletefunc=None):
+        """
+        Overwrites the default (inactive) delete method of an instance with a new custom function.
+
+        Parameters
+        ----------
+        deletefunc: function
+            The new function which will be called whenever keys are deleted.
+            If no function specified, resets to original (dummy) method.
+            The function header should be (name)
+
+        """
+        if deletefunc is None:
+            deletefunc = CleverDict.original_delete
+        params = tuple(list(inspect.signature(deletefunc).parameters.keys())[1:])
+        if params != ("name",):
+            raise TypeError(
+                f"delete function signature not (name), but ({', '.join(params)})"
+            )
+        super().__setattr__("delete", types.MethodType(deletefunc, CleverDict))
+
+    def autosave(self, fullcopy=False, silent=False):
+        """Toggles autosave to a config file.
+
+        Parameters
+        ----------
+
+        fullcopy: bool or str
+            False -> Autosave using  _auto_save_data
+            True -> Autosave using  _auto_save_fullcopy
+            "off" -> Turn off autosave and delete .save_path
+
+        silent: bool
+            False -> Print confirmations and file path
+            True -> No confirmationor file path printed
+        """
+        if fullcopy == "off":
+            try:
+                self.set_autosave()
+                self.set_autodelete()
+                if not silent:
+                    print("\n ⚠  Autosave disabled.")
+                    print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")
+                del self.save_path
+            except AttributeError as E:
+                # Attempted to turn autosave off before it was ever enabled
+                print(f"\n ⚠  Error with autosave(fullcopy=off): {E}")
+                return
+        else:
+            path = self.get("save_path") or self.get_new_save_path()
+            path = path.with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+            if not path.is_file():
+                self.create_save_file()
+            if fullcopy:
+                # Save and delete events trigger a call to the same method:
+                super().__setattr__(
+                    "save", types.MethodType(CleverDict._auto_save_fullcopy, self)
+                )
+                super().__setattr__(
+                    "delete", types.MethodType(CleverDict._auto_save_fullcopy, self)
+                )
             else:
-                norm_name = name
+                super().__setattr__(
+                    "save", types.MethodType(CleverDict._auto_save_data, self)
+                )
+                super().__setattr__(
+                    "delete", types.MethodType(CleverDict._auto_save_data, self)
+                )
+            self.save(name=None, value=None)
+            if not silent:
+                print(f"\n ⚠  Autosaving to:\n  {path}\n")
 
-            norm_name = "".join(ch if ("A"[:i] + ch).isidentifier() else "_" for i, ch in enumerate(norm_name))
-            if name != norm_name:
-                result.append(norm_name)
-    return result
+    def _auto_save_data(self, name=None, value=None):
+        """
+        Internal method
 
+        Calls _auto_save_json to save a copy of the data dictionary (only) in
+        JSON format, without any mappings, aliases, and directly set attributes.
 
-if __name__ == "__main__":
-    pass
+        If .autosave() is called on an object, this method overwrites the
+        default .save() method and is called every time a value changes or is
+        created.
+
+        """
+        if not hasattr(self, "save_path"):
+            path = self.get_new_save_path().with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+        self.to_json(file_path=self.save_path)
+
+    def _auto_save_fullcopy(self, name=None, value=None):
+        """
+        Internal method
+
+        Calls _auto_save_json to save a full copy of the CleverDict instance in
+        JSON format, in with all mappings, aliases, and directly set attributes.
+
+        If .autosave(fullcopy=True) is called on an object, this method
+        overwrites the default .save() method and is called every time a value
+        changes or is created.
+        """
+        self._auto_save_json(name=name, value=value, fullcopy=True)
+
+    def _auto_save_json(self, name=None, value=None, fullcopy=False):
+        """
+        Internal method
+
+        If .autosave("json") is called on an object, this overwrites
+        the default .save() method and is called every time a value changes or
+        is created.
+
+        NB JSON can only serialise certain datatypes.  Python sets, for example,
+        are not currently supported, and would therefore need to be simplified
+        further to avoid TypError.
+        """
+        if not hasattr(self, "save_path"):
+            path = self.get_new_save_path().with_suffix(".json")
+            self.setattr_direct("save_path", Path(path))
+        self.to_json(file_path=self.save_path, fullcopy=fullcopy)
