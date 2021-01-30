@@ -1,4 +1,4 @@
-# CleverDict
+# `CleverDict`
 <p align="center">
     <a href="https://pypi.python.org/pypi/cleverdict"><img alt="PyPI" src="https://img.shields.io/pypi/v/cleverdict.svg"></a>
 	<a href="https://pypi.python.org/pypi/cleverdict"><img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/cleverdict.svg"></a>
@@ -27,43 +27,12 @@
 10. [CONTRIBUTING](#10.-CONTRIBUTING)
 11. [CREDITS](#11.-CREDITS)
 
-<<<<<<< HEAD
-=======
-![cleverdict cartoon](https://raw.githubusercontent.com/PFython/cleverdict/master/cleverdict%20cartoon.png)
->>>>>>> 3c72d5ee6bb4bd629a09684369050c9e7f2cc2fb
 
 ## 1. OVERVIEW
 
 `CleverDict` is a hybrid Python data class which allows both `object.attribute` and `dictionary['key']` notation to be used simultaneously and interchangeably.  It's particularly handy when your code is mainly object-orientated but you want a 'DRY' and extensible way to import data in json/dictionary/list format into your objects... or vice versa... without having to write extra code just to handle the translation.
 
-<<<<<<< HEAD
 Python dictionaries are simple yet powerful, but many people find `object.attribute` syntax easier to type and more intuitive to read, so why not have the best of both worlds?
-=======
-```CleverDict``` also calls a ```.save``` method whenever an attribute or dictionary value is created or changed.  Initially the ```.save```method does nothing, but you can overwrite it with your own function to do useful things automatically every time an attribute changes in future e.g. pickle, encode, encrypt, serialise, save data to a config file or database, upload to the cloud etc. No more slavishly writing a call to your own "save" or "update" function every... single... time...
-
-The other main feature of `CleverDict` is that it supports **Aliases** while retaining the original keys/attributes.  This is really handy for data mapping e.g. taking an API response and making it play nicely with your own data structures.
-
-Read on to find out more...
-
-
-## 2. INSTALLATION
-No dependencies.  Very lightweight:
-
-    pip install cleverdict
-
-or to cover all bases...
-
-    python -m pip install cleverdict --upgrade
-
-
-
-
-## 3. BASIC USE
-
-```CleverDict``` objects behave like normal Python dictionaries, but with the convenience of immediately offering read and write access to their data (keys and values) using the ```object.attribute``` syntax, which many people find easier to type and more intuitive to read and understand.
-
-You can create a ```CleverDict``` object in exactly the same way as a regular Python dictionary:
->>>>>>> 3c72d5ee6bb4bd629a09684369050c9e7f2cc2fb
 
     >>> from cleverdict import CleverDict
     >>> x = CleverDict({'total':6, 'usergroup': "Knights of Ni"})
@@ -273,12 +242,7 @@ By default `CleverDict` tries to create valid attribute names where a straight c
     >>> x
     CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})
 
-<<<<<<< HEAD
-`CleverDict` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in `._aliases`.  You can add further aliases with `.add_alias()`:
-
-=======
 ```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._aliases```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
->>>>>>> 3c72d5ee6bb4bd629a09684369050c9e7f2cc2fb
 
     >>> x.add_alias(7, "NumberSeven")
     >>> x.add_alias(7, "zeven")
