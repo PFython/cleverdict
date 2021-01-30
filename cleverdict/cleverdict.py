@@ -13,7 +13,7 @@ import inspect
 Change log
 ==========
 
-version 1.8
+version 1.8.1
 ---------------------------
 Added to_json() and from_json()
 Added to_lines() and from_lines()
