@@ -763,7 +763,7 @@ class Test_Save_Functionality:
             == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         )
         assert delete_log()
-        x.set_save()
+        x.set_autosave()
         assert not delete_log()
         assert x.save.__name__ == "save"
 
@@ -771,16 +771,16 @@ class Test_Save_Functionality:
         delete_log()
         x = CleverDict()
         with pytest.raises(TypeError):
-            x.set_save(invalid_save_function)
+            x.set_autosave(invalid_save_function)
         assert not delete_log()
         with pytest.raises(TypeError):
-            x.set_delete(invalid_save_function)
+            x.set_autodelete(invalid_save_function)
         assert not delete_log()
 
     def test_save_on_creation4(self):
         delete_log()
         x = CleverDict()
-        x.set_save(example_save_function)
+        x.set_autosave(example_save_function)
         assert x.save.__name__ == "example_save_function"
         x["total"] = 6
         x["usergroup"] = "Knights of Ni"
@@ -790,7 +790,7 @@ class Test_Save_Functionality:
             == """Notional save to database: .total = 6 <class 'int'>\nNotional save to database: .usergroup = Knights of Ni <class 'str'>\n"""
         )
         assert delete_log()
-        x.set_save()
+        x.set_autosave()
         assert x.save.__name__ == "save"
 
     def test_save_on_update(self):
@@ -872,7 +872,7 @@ class Test_Delete_Functionality:
         assert log == "Notional DELETE to database: .total\n"
         assert delete_log()
         assert x.delete.__name__ == "example_delete_function"
-        x.set_delete()
+        x.set_autodelete()
         assert not delete_log()
         assert x.delete.__name__ == "delete"
 

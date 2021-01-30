@@ -17,18 +17,23 @@ version 1.8
 ---------------------------
 Added to_json() and from_json()
 Added to_lines() and from_lines()
-Added to_dict() as an alias of _filtered_mapping()
+Added to_dict()
+Added set_autosave (which works on individual objects, not the whole class)
+Added set_autodelete (which works on individual objects, not the whole class)
+Added autosave (which works on individual objects, not the whole class)
+Added the ability to fully recreate aCleverDict with to_json(fullcopy=True)
+Added cartoon!
+Added logo!
+Removed dependency on click
+Revamped README
 Removed identify_self()
-Reinstated print for autosave (only), but with 'silent' option
-to_json(fullcopy=True) creates JSON that can fully recreate a CleverDict
-to_json(fullcopy=False) creates JSON from data dictionary only
-__delattr__ removes attributes created using setattr_direct
-Dependency on click removed
-Applied ignore=[] to: to_lines, to_list, to_json, info, to_dict, and __repr__
-Auto-delete feature implemented:
-https://github.com/PFython/cleverdict/issues/11
-Auto-save to json file implemented:
-https://github.com/PFython/cleverdict/issues/10
+Removed print output except for for autosave, but with 'silent' option
+delattr removes attributes created using setattr_direct
+Attributes created using setattr_direct update correctly.
+Applied ignore=[] to: to_lines, to_list, to_json, info, to_dict, and repr
+More consistent repr
+._aliases and ._vars accessible as regular attributes
+Substantially more and better tests
 
 
 version 1.7.2 2020-11-03
@@ -116,7 +121,7 @@ def save(self, name=None, value=None):
     Overwrite with your own custome save() method e.g. to automatically
     write values to file/database/cloud, send a notification etc.
 
-    self.set_save(your_save_function)
+    self.set_autosave(your_save_function)
 
     Parameters
     ----------
@@ -138,7 +143,7 @@ def delete(self, name=None):
     own custome delete() method e.g. to automatically delete values from
     file/database/cloud, send a confirmation request/notification etc.
 
-    self.set_save(your_save_function)
+    self.set_autosave(your_save_function)
 
     Parameters
     ----------
@@ -302,9 +307,9 @@ class CleverDict(dict):
         self.setattr_direct("_aliases", {})
         with Expand(CleverDict.expand if _aliases is None else False):
             if save is not None:
-                self.set_save(save)
+                self.set_autosave(save)
             if delete is not None:
-                self.set_delete(delete)
+                self.set_autodelete(delete)
             self.update(_mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
@@ -883,7 +888,7 @@ class CleverDict(dict):
         with open(self.save_path, "w", encoding="utf-8") as file:
             file.write('{"empty": True}')
 
-    def set_save(self, savefunc=None):
+    def set_autosave(self, savefunc=None):
         """
         Overwrites the default (dummy) save method of an instance with a new custom function.
 
@@ -903,7 +908,7 @@ class CleverDict(dict):
             )
         super().__setattr__("save", types.MethodType(savefunc, CleverDict))
 
-    def set_delete(self, deletefunc=None):
+    def set_autodelete(self, deletefunc=None):
         """
         Overwrites the default (inactive) delete method of an instance with a new custom function.
 
@@ -941,8 +946,8 @@ class CleverDict(dict):
         """
         if fullcopy == "off":
             try:
-                self.set_save()
-                self.set_delete()
+                self.set_autosave()
+                self.set_autodelete()
                 if not silent:
                     print("\n ⚠  Autosave disabled.")
                     print(f"\nⓘ  Previous updates saved to:\n  {self.save_path}\n")

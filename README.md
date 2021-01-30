@@ -414,7 +414,7 @@ To disable autosaving/autodeletion  just enter:
 
 To deactivate `.save()` or `.delete()` separately:
 
-    >>> x.set_save()
+    >>> x.set_autosave()
     >>> x.set_deleve()
 
 > If you want to periodically open the `CleverDict` save folder to check for orphaned `.json` files from time to time, a handy shortcut is:
@@ -430,20 +430,20 @@ This can be enabled at a *class* level, or by creating subclasses of `CleverDict
 
 ### **Autosaving a particular object/instance:**
 
-You can either overwrite the `.save()` / `.delete()` methods when you create your object, or use `.set_save()` / `.set_delete()` after the event:
+You can either overwrite the `.save()` / `.delete()` methods when you create your object, or use `.set_autosave()` / `.set_autodelete()` after the event:
 
     >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"},
         save=your_save_function)
 
     # Or for an existing object:
-    >>> x.set_save(your_save_function)
+    >>> x.set_autosave(your_save_function)
 
 
     >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"},
         delete=your_delete_function)
 
     # Or for an existing object:
-    >>> x.set_delete(your_delete_function)
+    >>> x.set_autodelete(your_delete_function)
 
 ### **Autosaving at a class level:**
 
