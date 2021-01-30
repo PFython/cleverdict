@@ -21,7 +21,7 @@ Added to_dict()
 Added set_autosave (which works on individual objects, not the whole class)
 Added set_autodelete (which works on individual objects, not the whole class)
 Added autosave (which works on individual objects, not the whole class)
-Added the ability to fully recreate aCleverDict with to_json(fullcopy=True)
+Added the ability to fully recreate a CleverDict with to_json(fullcopy=True)
 Added cartoon!
 Added logo!
 Removed dependency on click
