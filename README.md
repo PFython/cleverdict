@@ -230,7 +230,7 @@ Finally, if you want to **exclude** (perhaps sensitive) attributes such as `.pas
 You can add common exceptions at a *class* level too:
 
     >>> CleverDict.ignore
-    {"save", "delete"}
+    {"_aliases", "save_path", "save", "delete"}
 
      >>> CleverDict.update({"password"})
 
