@@ -161,7 +161,7 @@ You can also use the `.to_list()` method to generate a list of key/value pairs:
     >>> x.to_list()
     [(1, 'one'), (2, 'two')]
 
-And you can import/export text files using `.from_lines()` and `.to_lines()` which is useful for things like subtitles and to-do lists:
+And you can import/export text files using `.from_lines()` and `.to_lines()` which is useful for things like subtitles, README files, code, and to-do lists:
 
     >>> lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
     >>> x = CleverDict.from_lines(lines)
@@ -215,11 +215,7 @@ Although primarily intended for numerical indexing, you can also use *strings* w
 
 > NB:  Like regular dictionaries from Python 3.6 onwards, `CleverDict`,  stores values **in the order you create them**.  By default though `pprint` will helpfully (!) **sort** the keys, so don't panic if they seem out of order... Just use `repr()` to confirm the actual order, or `.info()` which is explained more fully in Section 6.
 
-<center>
-
 ![Keep Calm](https://raw.githubusercontent.com/PFython/cleverdict/master/keep_calm_use_info.png)
-
-</center>
 
 Finally, if you want to **exclude** (perhaps sensitive) attributes such as `.password` from the output of `.to_json()`, `.to_list()`, `.to_dict`, `.to_lines()`, `.info()` and even `__repr__()`, just add the argument `ignore=` followed by a list of attribute/key names to ignore:
 
@@ -230,6 +226,13 @@ Finally, if you want to **exclude** (perhaps sensitive) attributes such as `.pas
 
     >>> x.to_lines(start_from_key=6, ignore=["password"])
     'My LAST\n'
+
+You can add common exceptions at a *class* level too:
+
+    >>> CleverDict.ignore
+    {"save", "delete"}
+
+     >>> CleverDict.update({"password"})
 
 ## 5. ATTRIBUTE NAMES AND ALIASES
 
