@@ -6,7 +6,7 @@ from collections import UserDict
 from textwrap import dedent
 import json
 from pathlib import Path
-
+import keyring
 
 def example_save_function(self, name=None, value=None):
     """
@@ -1208,6 +1208,30 @@ class Test_README_examples:
             x.info(as_str=True)
             == "Movie:\n    x['title'] == x.title == 'The Wizard of Oz'"
         )
+
+class Test_at_property:
+    class User:
+        def __init__(self):
+            self.username = "testname"
+            self.account = "testaccount"
+        @property
+        def password(self):
+            return keyring.get_password(self.account, self.username)
+
+        @password.setter
+        def password(self, value):
+            keyring.set_password(self.account, self.username, value)
+
+        @password.deleter
+        def password(self):
+            keyring.delete_password(self.account, self.username)
+    user = User()
+    user.password = "testpw"
+    assert user.password == "testpw"
+    assert keyring.get_password("testaccount", "testname") == "testpw"
+    del user.password
+    assert not user.password
+    assert not keyring.get_password("testaccount", "testname") == "testpw"
 
 
 if __name__ == "__main__":
