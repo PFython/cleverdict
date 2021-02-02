@@ -8,6 +8,7 @@ from pathlib import Path
 import keyring
 from itertools import permutations
 
+
 def example_save_function(self, name=None, value=None):
     """
     Example of a custom function which can be called by self._save()
@@ -253,19 +254,23 @@ class Test_Misc:
     def test_exclude(self):
         """ exclude=(Marshmallow syntax) should act as an alias for ignore= """
         x = CleverDict({"Yes": "include me", "No": "exclude/ignore me"})
-        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
-            ignore = eval("x."+func.replace("(", "(ignore=['No']"))
-            exclude = eval("x."+func.replace("(", "(exclude=['No']"))
+        for (
+            func
+        ) in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
+            ignore = eval("x." + func.replace("(", "(ignore=['No']"))
+            exclude = eval("x." + func.replace("(", "(exclude=['No']"))
             assert ignore == exclude
 
     def test_only(self):
         """only=[list] should return output ONLY matching the given keys"""
         x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         a_and_o = CleverDict({"Apples": "Green", "Oranges": "Purple"})
-        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
-            result1 = eval("x."+func.replace("(","(only=['Apples', 'Oranges']"))
-            result2 = eval("a_and_o."+func.replace(",as_str","as_str"))
-            assert str(result1) == str(result2).replace("a_and_o","x")
+        for (
+            func
+        ) in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
+            result1 = eval("x." + func.replace("(", "(only=['Apples', 'Oranges']"))
+            result2 = eval("a_and_o." + func.replace(",as_str", "as_str"))
+            assert str(result1) == str(result2).replace("a_and_o", "x")
 
     def test_permissive(self):
         """
@@ -282,11 +287,15 @@ class Test_Misc:
         assert x.to_list(ignore="Apples") == x.to_list(ignore=["Apples"])
         assert x.to_lines(only="Apples") == x.to_lines(only=["Apples"])
         assert x.to_lines(ignore="Apples") == x.to_lines(ignore=["Apples"])
-        assert x.info(exclude="Apples", as_str=True) == x.info(exclude=["Apples"], as_str=True)
-        assert x.info(ignore="Apples", as_str=True) == x.info(ignore=["Apples"], as_str=True)
+        assert x.info(exclude="Apples", as_str=True) == x.info(
+            exclude=["Apples"], as_str=True
+        )
+        assert x.info(ignore="Apples", as_str=True) == x.info(
+            ignore=["Apples"], as_str=True
+        )
 
     def test_fullcopy_plus_filter(self):
-        #TODO:
+        # TODO:
         """ fullcopy= can be used with other arguments only= ignore= or exclude=.  Error must be handled gracefully."""
         x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         assert "Apples" not in x.to_json(fullcopy=True, ignore="Apples")
@@ -295,46 +304,88 @@ class Test_Misc:
         assert "Bananas" not in x.to_json(fullcopy=True, only="Apples")
 
     def test_only_OR_ignore_OR_exclude_as_args(self):
-        """ Only one of only=, ignore=, or exclude= can be given as an argument
+        """Only one of only=, ignore=, or exclude= can be given as an argument
         for supported functions.  Error must be handled gracefully."""
         x = CleverDict({"Yes": "include me", "No": "exclude/ignore me"})
-        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(as_str=True)".split():
-            perms = list(permutations(["only=","ignore=","exclude="]))
-            perms += list(permutations(["only=","ignore=","exclude="],2))
-            perms = ["".join(list(x)).replace("=","=['Yes'],") for x in perms]
+        for (
+            func
+        ) in "__repr__() to_json() to_dict() to_list() to_lines() info(as_str=True)".split():
+            perms = list(permutations(["only=", "ignore=", "exclude="]))
+            perms += list(permutations(["only=", "ignore=", "exclude="], 2))
+            perms = ["".join(list(x)).replace("=", "=['Yes'],") for x in perms]
             for args in perms:
                 with pytest.raises(TypeError):
-                    eval("x."+func.replace("(","("+args))
+                    eval("x." + func.replace("(", "(" + args))
 
     def test_filters_with_init(self):
         """
         only= exclude= ignore= should work as part of object instantiation.
         """
-        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"}, only="Apples")
-        assert list(x.keys()) == ['Apples']
-        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"}, only=["Apples", "Bananas"])
-        assert list(x.keys()) == ['Apples', 'Bananas']
+        # dict
+        x = CleverDict(
+            {"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"}, only="Apples"
+        )
+        assert list(x.keys()) == ["Apples"]
+        x = CleverDict(
+            {"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"},
+            only=["Apples", "Bananas"],
+        )
+        assert list(x.keys()) == ["Apples", "Bananas"]
 
-        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"}, ignore="Apples")
-        assert list(x.keys()) == ['Bananas', 'Oranges']
-        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"}, exclude=["Apples", "Bananas"])
-        assert list(x.keys()) == ['Oranges']
+        x = CleverDict(
+            {"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"},
+            ignore="Apples",
+        )
+        assert list(x.keys()) == ["Bananas", "Oranges"]
+        x = CleverDict(
+            {"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"},
+            exclude=["Apples", "Bananas"],
+        )
+        assert list(x.keys()) == ["Oranges"]
 
+        # CleverDict
+        x = CleverDict(
+            {"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
+        y = CleverDict(x, only="Apples")
+        assert list(y.keys()) == ["Apples"]
+        y = CleverDict(x, exclude="Apples")
+        assert list(y.keys()) == ['Bananas', 'Oranges']
+
+        # list of tuples/lists
+        x = CleverDict([("value1", "one"), ["value2", "two"], ("value3", "three")], ignore=["value1", "value2"])
+        assert list(x.keys()) == ["value3"]
+        x = CleverDict([("value1", "one"), ["value2", "two"], ("value3", "three")], only=["value1"])
+        assert list(x.keys()) == ["value1"]
+
+        # fromkeys
+        x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9", only="Abigail")
+        assert list(x.keys()) == ["Abigail"]
+        x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9", exclude="Abigail")
+        assert list(x.keys()) == ['Tino', 'Isaac']
+
+        # from_json
+
+        json_data = '{"None": null, "data": "123xyz"}'
+        x = CleverDict.from_json(json_data, only="data")
+        assert list(x.keys()) ==
+        json_data = '{"None": null, "data": "123xyz"}'
+        x = CleverDict.from_json(json_data, exclude="data")
+        assert list(x.keys()) ==
+
+        # from_lines
+        # Refactor bool block into be_permissive
 
     def test_too_many_filters_with_init(self):
         """
         __init__ can only take one of only= exclude= ignore=.
         Otherwise should fail gracefully.
         """
-        perms = list(permutations(["only=[1],","ignore=[2],","exclude=[3],"]))
-        perms += list(permutations(["only=[1],","ignore=[2],","exclude=[3],"],2))
+        perms = list(permutations(["only=[1],", "ignore=[2],", "exclude=[3],"]))
+        perms += list(permutations(["only=[1],", "ignore=[2],", "exclude=[3],"], 2))
         perms = ["".join(list(x)) for x in perms]
         for args in perms:
             with pytest.raises(TypeError):
                 eval(f"CleverDict({{1:1, 2:2, 3:3}}, {args})")
-
-
-    # TODO: Add 'only=', 'ignore=', 'exclude=' to __init__ args
 
     def test_to_lines(self, tmpdir):
         d = CleverDict()
@@ -575,6 +626,7 @@ class Test_Misc:
         try:
             import click
             from cleverdict import get_app_dir
+
             assert click.get_app_dir("x") == get_app_dir("x")
         except ModuleNotFoundError:
             pytest.skip("could not import click or cleverdict")
@@ -1295,11 +1347,13 @@ class Test_README_examples:
             == "Movie:\n    x['title'] == x.title == 'The Wizard of Oz'"
         )
 
+
 class Test_at_property:
     class User:
         def __init__(self):
             self.username = "testname"
             self.account = "testaccount"
+
         @property
         def password(self):
             return keyring.get_password(self.account, self.username)
@@ -1311,6 +1365,7 @@ class Test_at_property:
         @password.deleter
         def password(self):
             keyring.delete_password(self.account, self.username)
+
     user = User()
     user.password = "testpw"
     assert user.password == "testpw"
