@@ -239,6 +239,13 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
         _posixify(app_name),
     )
 
+def be_permissive(*args):
+    """
+    Ensures all args are iterables even if single item string supplied.
+    Useful for making functions permissive which previously required a list etc.
+    """
+    return (args)
+    return [[arg] if isinstance(arg, str) else arg for arg in args]
 
 class Expand:
     def __init__(self, ok):
@@ -370,6 +377,20 @@ class CleverDict(dict):
         return NotImplemented
 
     def __repr__(self, ignore=None, exclude=None, only=None):
+        """
+        Parameters
+        ----------
+
+        ignore: iterable | str
+            Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+        """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
         if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
             raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
         if exclude and ignore is None:
@@ -377,7 +398,7 @@ class CleverDict(dict):
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
-        _mapping = self._filtered_mapping(ignore)
+        _mapping = self._filtered_mapping(ignore, only)
         _aliases = {
             k: v for k, v in self._aliases.items() if k not in self and v in _mapping
         }
@@ -412,7 +433,7 @@ class CleverDict(dict):
             return self._aliases[name]
         raise KeyError(name)
 
-    def _filtered_mapping(self, ignore):
+    def _filtered_mapping(self, ignore=None, only=False):
         """
         Internal method
         The user should use to_dict !
@@ -421,8 +442,14 @@ class CleverDict(dict):
 
         Parameters
         ----------
-        ignore: list
+        ignore: iterable | str
             Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
@@ -432,11 +459,15 @@ class CleverDict(dict):
         ----
         The CleverDict.ignore items are not filtered out.
         """
+        ignore, only = be_permissive(ignore, only)
         mapping = {k: v for k, v in self.items() if k not in ignore}
         for k, v in self._aliases.items():
             if k in ignore and v in mapping:
                 del mapping[v]
-        return mapping
+        if only:
+            return {k: v for k, v in mapping.items() if k in only}
+        else:
+            return mapping
 
     def update(self, _mapping=(), **kwargs):
         """
@@ -465,11 +496,21 @@ class CleverDict(dict):
             if as_str is False, prints the information
             if as_str is True, returns the information as a string
 
+        ignore: iterable | str
+            Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+
         Returns
         -------
         information (if as_str is True): str
         None (if as_str is False)
         """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
         if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
             raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
         indent = "    "
@@ -488,7 +529,7 @@ class CleverDict(dict):
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
-        mapping = self._filtered_mapping(ignore)
+        mapping = self._filtered_mapping(ignore, only)
         for k, v in mapping.items():
             parts = []
             for ak, av in self._aliases.items():
@@ -638,8 +679,14 @@ class CleverDict(dict):
 
         Paramters
         ---------
-        ignore : iterable
+        ignore: iterable | str
             Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
@@ -647,6 +694,7 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
         if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
             raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
         if exclude and ignore is None:
@@ -654,7 +702,7 @@ class CleverDict(dict):
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
-        mapping = self._filtered_mapping(ignore)
+        mapping = self._filtered_mapping(ignore, only)
         return [(k, v) for k, v in mapping.items()]
 
     def to_dict(self, ignore=None, exclude=None, only=None):
@@ -663,13 +711,20 @@ class CleverDict(dict):
 
         Parameters
         ----------
-        ignore: iterable
+        ignore: iterable | str
             Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
         dict
         """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
         if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
             raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
         if exclude and ignore is None:
@@ -677,8 +732,9 @@ class CleverDict(dict):
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
+        return self._filtered_mapping(ignore=ignore, only=only)
 
-        return self._filtered_mapping(ignore=ignore)
+
 
     @classmethod
     def fromkeys(cls, iterable, value):
@@ -712,9 +768,15 @@ class CleverDict(dict):
             confused with slicing e.g. x[0] will fail for x = CleverDict({1:1})
             String keys allow for keys/aliases to be references e.g. "Footnote"
 
-        ignore: list
+        ignore: iterable | str
             Any keys/aliases to ignore from output.  Ignoring an alias ignores
             all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         file_path: str | pathlib.Path
             Path to the file (if any) to save to.
@@ -724,6 +786,7 @@ class CleverDict(dict):
         values joined by "\n" (if file_path is not specified) : str
         None (if file_path is specified)
         """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
         if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
             raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
         if exclude and ignore is None:
@@ -731,7 +794,7 @@ class CleverDict(dict):
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
-        to_save = self._filtered_mapping(ignore)
+        to_save = self._filtered_mapping(ignore, only)
         if start_from_key is None:
             start_from_key = self.get_aliases()[0]
         else:
@@ -801,9 +864,15 @@ class CleverDict(dict):
         fullcopy: bool
              Includes ._aliases and ._vars if True
 
-        ignore: list
+        ignore: iterable | str
             Any keys/aliases to ignore from output.  Ignoring an alias ignores
             all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
@@ -815,6 +884,7 @@ class CleverDict(dict):
         Derived only from dictionary data if fullcopy==False
         Includes ._aliases and ._vars if fullcopy==True
         """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
         if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
             raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
         if exclude and ignore is None:
@@ -822,7 +892,7 @@ class CleverDict(dict):
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
-        _mapping = self._filtered_mapping(ignore)
+        _mapping = self._filtered_mapping(ignore, only)
 
         if not fullcopy:
             json_str = json.dumps(_mapping, indent=4)

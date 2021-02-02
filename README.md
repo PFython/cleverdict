@@ -138,7 +138,7 @@ To return a regular Python `dict` from `CleverDict`'s main data dictionary:
     >>> x.to_dict()
     {'name': 'Percival'}
 
-You can export to JSON with `.to_json()` but be aware that your nested values/objects will not be touched, and must therefore be capable of being serialised to JSON individually.  If they're not essential to your output, you can simply add the  `ignore=` argument to exclude them entirely:
+You can export to JSON with `.to_json()` but be aware that your nested values/objects will not be touched, and must therefore be capable of being serialised to JSON individually.  If they're not essential to your output, you can simply add the  `ignore=` (or `exclude=`) argument to exclude them entirely:
 
     >>> x.to_json()
     '{\n    "name": "Percival"\n}'
@@ -216,7 +216,13 @@ Although primarily intended for numerical indexing, you can also use *strings* w
 
 ![Keep Calm](https://raw.githubusercontent.com/PFython/cleverdict/master/keep_calm_use_info.png)
 
-Finally, if you want to **exclude** (perhaps sensitive) attributes such as `.password` from the output of `.to_json()`, `.to_list()`, `.to_dict`, `.to_lines()`, `.info()` and even `__repr__()`, just add the argument `ignore=` followed by a list of attribute/key names to ignore:
+If you want to *only* include particular keys in the output of `.to_json()`, `.to_list()`, `.to_dict`, `.to_lines()`, `.info()` and even `__repr__()`, you can use the `only=` argument followed by a list of attribute/key names:
+
+    >>> x = CleverDict({"Apple": "Green", "Banana": "Yellow", "Orange": "Blue"})
+    >>> x.to_dict(only=["Apple", "Orange"])
+    {'Apple': 'Green', 'Orange': 'Blue'}
+
+And finally, if you want to **exclude** (perhaps sensitive) attributes such as `.password`, just add the argument `ignore=` (or `exclude=`)  to ignore:
 
     >>> x.password = "Top Secret - don't ever save to file!"
 
@@ -268,7 +274,7 @@ Python dictionaries accept keywords, null strings, strings incorporating punctua
     >>> type(y.to_list)
     <class 'method'>
 
-Back to our **alias** example, if you specify `ignore=` when using `.to_json()`, `.to_list()`, `.info()`, `to_lines()`, `.to_dict`, or `__repr__()`, you can rest easy knowing that all aliases *and* the primary key(s) you've specified will be excluded too:
+Back to our **alias** example, if you specify `ignore=` (or `exclude=`) when using `.to_json()`, `.to_list()`, `.info()`, `to_lines()`, `.to_dict`, or `__repr__()`, you can rest easy knowing that all aliases *and* the primary key(s) you've specified will be excluded too:
 
     >>> x.info(ignore=[7])
     CleverDict:

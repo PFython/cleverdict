@@ -259,11 +259,14 @@ class Test_Misc:
             assert ignore == exclude
 
     def test_only(self):
-        """only=[list] should return output ONLY matching the given keys"""
+        """only=[list] should return outls
+        put ONLY matching the given keys"""
         x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         a_and_o = CleverDict({"Apples": "Green", "Oranges": "Purple"})
-        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(as_str=True)".split():
-            eval("x."+func.replace("(","only=[Apples', 'Oranges']"))
+        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
+            result1 = eval("x."+func.replace("(","(only=['Apples', 'Oranges']"))
+            result2 = eval("a_and_o."+func.replace(",as_str","as_str"))
+            assert str(result1) == str(result2).replace("a_and_o","x")
 
     def test_only_fullcopy(self):
         #TODO:
