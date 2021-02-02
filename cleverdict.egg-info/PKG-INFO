@@ -1,13 +1,13 @@
 Metadata-Version: 2.1
 Name: cleverdict
-Version: 1.8.0
+Version: 1.8.1
 Summary: A JSON-friendly data structure which allows both object attributes and dictionary keys and values to be used simultaneously and interchangeably.
 Home-page: https://github.com/Pfython/cleverdict
 Author: Peter Fison
 Author-email: peter@southwestlondon.tv
 License: MIT License
-Download-URL: https://github.com/Pfython/cleverdict/archive/1.8.0.tar.gz
-Description: # CleverDict
+Download-URL: https://github.com/Pfython/cleverdict/archive/1.8.1.tar.gz
+Description: # `CleverDict`
         <p align="center">
             <a href="https://pypi.python.org/pypi/cleverdict"><img alt="PyPI" src="https://img.shields.io/pypi/v/cleverdict.svg"></a>
         	<a href="https://pypi.python.org/pypi/cleverdict"><img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/cleverdict.svg"></a>
@@ -251,8 +251,7 @@ Description: # CleverDict
             >>> x
             CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})
         
-        `CleverDict` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in `._aliases`.  You can add further aliases with `.add_alias()`:
-        
+        ```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._aliases```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
         
             >>> x.add_alias(7, "NumberSeven")
             >>> x.add_alias(7, "zeven")
@@ -423,7 +422,7 @@ Description: # CleverDict
         
         To deactivate `.save()` or `.delete()` separately:
         
-            >>> x.set_save()
+            >>> x.set_autosave()
             >>> x.set_deleve()
         
         > If you want to periodically open the `CleverDict` save folder to check for orphaned `.json` files from time to time, a handy shortcut is:
@@ -439,20 +438,20 @@ Description: # CleverDict
         
         ### **Autosaving a particular object/instance:**
         
-        You can either overwrite the `.save()` / `.delete()` methods when you create your object, or use `.set_save()` / `.set_delete()` after the event:
+        You can either overwrite the `.save()` / `.delete()` methods when you create your object, or use `.set_autosave()` / `.set_autodelete()` after the event:
         
             >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"},
                 save=your_save_function)
         
             # Or for an existing object:
-            >>> x.set_save(your_save_function)
+            >>> x.set_autosave(your_save_function)
         
         
             >>> x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"},
                 delete=your_delete_function)
         
             # Or for an existing object:
-            >>> x.set_delete(your_delete_function)
+            >>> x.set_autodelete(your_delete_function)
         
         ### **Autosaving at a class level:**
         

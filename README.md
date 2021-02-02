@@ -1,4 +1,4 @@
-# CleverDict
+# `CleverDict`
 <p align="center">
     <a href="https://pypi.python.org/pypi/cleverdict"><img alt="PyPI" src="https://img.shields.io/pypi/v/cleverdict.svg"></a>
 	<a href="https://pypi.python.org/pypi/cleverdict"><img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/cleverdict.svg"></a>
@@ -56,10 +56,9 @@ Python dictionaries are simple yet powerful, but many people find `object.attrib
     >>> x.life
     AttributeError: 'life'
 
-The other main features of `CleverDict` are that it plays nicely with **JSON** and allows **Aliases** and mappings back to the original dictionary keys, handling the many wrinkles and edge cases we've unearthed along the way, so you don't have to.  **Aliases** are really handy for shortcuts, taking an API response and mapping it  your own data structures, local language variants, and more.
+`CleverDict` automatically generates **Aliases** which map to your original dictionary keys, handling various edge cases we've unearthed along the way so you don't have to.  You can add and delete your own custom **Aliases** too, which is really handy for adding shortcuts, mapping API responses to existing data structures, local language variants, and more.
 
-`CleverDict` includes some great convenience functions for importing/export lists, dicts, JSON, and lines, as well as several (optional) *"batteries included"* `.autosave()` features, e.g. for effortlessly saving your data to a JSON file.  You can also easily write your own `.save()` and `.delete()` functions and trigger them automatically whenever an attribute changes.  No more slavishly writing your own "save" or "update" routines and trying to remember to call it manually every... single... time... values change (or *could* change).
-
+`CleverDict` plays nicely with JSON and also includes some great convenience functions for importing/export lists, dicts, and lines.  It even offers two built-in `.autosave()` options and you can specify your own autosave/autodelete functions to be called automatically whenever an attribute changes.  No more explicitly writing lines to save your data or prompt for confirmation etc. every... single... time... a value changes (or *worse*, forgetting to...).
 
 ## 2. INSTALLATION
 
@@ -161,7 +160,7 @@ You can also use the `.to_list()` method to generate a list of key/value pairs:
     >>> x.to_list()
     [(1, 'one'), (2, 'two')]
 
-And you can import/export text files using `.from_lines()` and `.to_lines()` which is useful for things like subtitles and to-do lists:
+And you can import/export text files using `.from_lines()` and `.to_lines()` which is useful for things like subtitles, README files, code, and to-do lists:
 
     >>> lines ="This is my first line\nMy second...\n\n\n\n\nMy LAST\n"
     >>> x = CleverDict.from_lines(lines)
@@ -215,11 +214,7 @@ Although primarily intended for numerical indexing, you can also use *strings* w
 
 > NB:  Like regular dictionaries from Python 3.6 onwards, `CleverDict`,  stores values **in the order you create them**.  By default though `pprint` will helpfully (!) **sort** the keys, so don't panic if they seem out of order... Just use `repr()` to confirm the actual order, or `.info()` which is explained more fully in Section 6.
 
-<center>
-
 ![Keep Calm](https://raw.githubusercontent.com/PFython/cleverdict/master/keep_calm_use_info.png)
-
-</center>
 
 Finally, if you want to **exclude** (perhaps sensitive) attributes such as `.password` from the output of `.to_json()`, `.to_list()`, `.to_dict`, `.to_lines()`, `.info()` and even `__repr__()`, just add the argument `ignore=` followed by a list of attribute/key names to ignore:
 
@@ -231,9 +226,16 @@ Finally, if you want to **exclude** (perhaps sensitive) attributes such as `.pas
     >>> x.to_lines(start_from_key=6, ignore=["password"])
     'My LAST\n'
 
+You can add common exceptions at a *class* level too:
+
+    >>> CleverDict.ignore
+    {"_aliases", "save_path", "save", "delete"}
+
+     >>> CleverDict.ignore.add("password")
+
 ## 5. ATTRIBUTE NAMES AND ALIASES
 
-By default `CleverDict` tries to create valid attribute names where a straight copy of the dictionary keys would otherwise fail.  For example keywords, null strings, most punctuation marks, and keys starting with a numeral can't be used for attribute names.  So for example `CleverDict` will automatically create the attribute name`"_7"` (string) to map to a dictionary key of `7` (integer):
+Python dictionaries accept keywords, null strings, strings incorporating punctuation marks, and integers as their keys, but these *aren't* valid names for object attributes.  `CleverDict` helps by generating valid names where a straight copy of the dictionary keys would otherwise fail.    So for example `CleverDict` will automatically create the attribute name`"_7"` (string) to map to a dictionary key of `7` (integer):
 
     >>> x = CleverDict({7: "Seven"})
 
@@ -242,8 +244,7 @@ By default `CleverDict` tries to create valid attribute names where a straight c
     >>> x
     CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})
 
-`CleverDict` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in `._aliases`.  You can add further aliases with `.add_alias()`:
-
+```CleverDict``` keeps the original dictionary keys and values unchanged and remembers any normalised attribute names as aliases in ```._aliases```.  You can add or delete further aliases with ```.add_alias``` and ```.delete_alias```, but the original dictionary key will never be deleted, even if all aliases and attributes are removed:
 
     >>> x.add_alias(7, "NumberSeven")
     >>> x.add_alias(7, "zeven")
