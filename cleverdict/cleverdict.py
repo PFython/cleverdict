@@ -244,7 +244,6 @@ def be_permissive(*args):
     Ensures all args are iterables even if single item string supplied.
     Useful for making functions permissive which previously required a list etc.
     """
-    return (args)
     return [[arg] if isinstance(arg, str) else arg for arg in args]
 
 class Expand:
@@ -314,7 +313,7 @@ class CleverDict(dict):
     expand = True
 
     def __init__(
-        self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, **kwargs
+        self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, only= None, ignore=None, exclude=None, **kwargs
     ):
         self.setattr_direct("_aliases", {})
         with Expand(CleverDict.expand if _aliases is None else False):
@@ -322,6 +321,16 @@ class CleverDict(dict):
                 self.set_autosave(save)
             if delete is not None:
                 self.set_autodelete(delete)
+            ignore, exclude, only = be_permissive(ignore, exclude, only)
+            if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
+                raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
+            if exclude and ignore is None:
+                ignore = exclude
+            if ignore:
+                _mapping = {k: v for k, v in _mapping.items() if k not in ignore}
+            if only:
+                _mapping = {k: v for k, v in _mapping.items() if k in only}
+
             self.update(_mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
@@ -459,7 +468,6 @@ class CleverDict(dict):
         ----
         The CleverDict.ignore items are not filtered out.
         """
-        ignore, only = be_permissive(ignore, only)
         mapping = {k: v for k, v in self.items() if k not in ignore}
         for k, v in self._aliases.items():
             if k in ignore and v in mapping:
@@ -733,8 +741,6 @@ class CleverDict(dict):
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
         return self._filtered_mapping(ignore=ignore, only=only)
-
-
 
     @classmethod
     def fromkeys(cls, iterable, value):
