@@ -1,5 +1,4 @@
 from cleverdict import CleverDict, Expand, all_aliases
-import cleverdict
 import pytest
 import os
 from collections import UserDict
@@ -7,6 +6,7 @@ from textwrap import dedent
 import json
 from pathlib import Path
 import keyring
+from itertools import permutations
 
 def example_save_function(self, name=None, value=None):
     """
@@ -250,6 +250,41 @@ CleverDict:
 
 
 class Test_Misc:
+    def test_exclude(self):
+        """ exclude=(Marshmallow syntax) should act as an alias for ignore= """
+        x = CleverDict({"Yes": "include me", "No": "exclude/ignore me"})
+        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
+            ignore = eval("x."+func.replace("(", "(ignore=['No']"))
+            exclude = eval("x."+func.replace("(", "(exclude=['No']"))
+            assert ignore == exclude
+
+    def test_only(self):
+        """only=[list] should return output ONLY matching the given keys"""
+        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
+        a_and_o = CleverDict({"Apples": "Green", "Oranges": "Purple"})
+        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(as_str=True)".split():
+            eval("x."+func.replace("(","only=[Apples', 'Oranges']"))
+
+    def test_only_fullcopy(self):
+        #TODO:
+        """ fullcopy= can't (?) be used with other arguments only= ignore= or exclude=.  Error must be handled gracefully."""
+        pass
+
+    def test_only_OR_ignore_OR_exclude_as_args(self):
+        """ Only one of only=, ignore=, or exclude= can be given as an argument
+        for supported functions.  Error must be handled gracefully."""
+        x = CleverDict({"Yes": "include me", "No": "exclude/ignore me"})
+        for func in "__repr__() to_json() to_dict() to_list() to_lines() info(as_str=True)".split():
+            perms = list(permutations(["only=","ignore=","exclude="]))
+            perms += list(permutations(["only=","ignore=","exclude="],2))
+            perms = ["".join(list(x)).replace("=","=['Yes'],") for x in perms]
+            for args in perms:
+                with pytest.raises(TypeError):
+                    eval("x."+func.replace("(","("+args))
+
+    # TODO: Make 'only=', 'ignore=', 'exclude=' permissive i.e. jsut accept str
+    # TODO: Add 'only=', 'ignore=', 'exclude=' to __init__ args
+
     def test_to_lines(self, tmpdir):
         d = CleverDict()
         d[1] = "een"
@@ -488,10 +523,10 @@ class Test_Misc:
         """
         try:
             import click
-
-            assert click.get_app_dir("x") == cleverdict.get_app_dir("x")
+            from cleverdict import get_app_dir
+            assert click.get_app_dir("x") == get_app_dir("x")
         except ModuleNotFoundError:
-            pytest.skip("could not import click")
+            pytest.skip("could not import click or cleverdict")
 
 
 class Test_Internal_Logic:
