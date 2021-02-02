@@ -367,10 +367,10 @@ class Test_Misc:
 
         json_data = '{"None": null, "data": "123xyz"}'
         x = CleverDict.from_json(json_data, only="data")
-        assert list(x.keys()) ==
+        assert list(x.keys()) == ['data']
         json_data = '{"None": null, "data": "123xyz"}'
         x = CleverDict.from_json(json_data, exclude="data")
-        assert list(x.keys()) ==
+        assert list(x.keys()) == ['None']
 
         # from_lines
         # Refactor bool block into be_permissive

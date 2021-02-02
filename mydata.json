@@ -1,0 +1,12 @@
+{
+    "_mapping_encoded": {
+        "'total'": 6,
+        "'usergroup'": "Knights of Ni"
+    },
+    "_aliases": {
+        "knights": "usergroup"
+    },
+    "_vars": {
+        "Quest": "The Holy Grail"
+    }
+}
