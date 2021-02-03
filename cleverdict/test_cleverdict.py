@@ -636,12 +636,19 @@ class Test_Misc:
             pytest.skip("could not import click or cleverdict")
 
     def test_import_existing_cleverdict(test):
-        x = CleverDict({"name": "Peter"})
+        x = CleverDict({"name": "Peter", "nationality": "British"})
         x.add_alias("name", "nom")
         x.setattr_direct("private", "parts")
+        x.autosave()
         y = CleverDict(x)
         assert y.nom == "Peter"
         assert y.private == "parts"
+        assert list(y.keys()) == ['name', 'nationality']
+        y = CleverDict(x, only="name")
+        assert list(y.keys()) == ['name']
+        y = CleverDict(x, exclude="name")
+        assert list(y.keys()) == ['nationality']
+
 
 class Test_Internal_Logic:
     def test_raises_error(self):
@@ -1209,7 +1216,6 @@ class Test_README_examples:
 
     def test_AUTOSAVE_1(self):
         """ Default option: data dictionary saved only """
-
         x = CleverDict({"Patient Name": "Wobbly Joe", "Test Result": "Positive"})
         assert not hasattr(x, "save_path")
         assert x.save.__name__ == "save"
@@ -1285,13 +1291,43 @@ class Test_README_examples:
 
     def test_AUTOSAVE_7(self):
         """
-        There might be a complicated problem when autosaving an inherited CleverDict. The super() might refer to CleverDict and might cause issues
+        There might be a complicated problem when autosaving an inherited CleverDict e.g. via to_json/from_json.
+
+        The super() might refer to CleverDict and might cause issues?
+
+        Inheriting from another CleverDict should NOT inherit the autosave/save
+        settings.
         """
         x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
         x.add_alias("usergroup", "knights")
         x.setattr_direct("Quest", "The Holy Grail")
         x.to_json(file_path="mydata.json", fullcopy=True)
         y = CleverDict.from_json(file_path="mydata.json")
+        assert y.save.__name__ == "save"
+        y.autosave(fullcopy=True, silent=True)
+        assert y.save.__name__ == "_auto_save_fullcopy"
+        assert "knights" in y._aliases
+        assert '"knights": "usergroup"' in get_data(y.save_path)
+        y.delete_alias("knights")
+        assert "knights" not in y._aliases
+        assert '"knights": "usergroup"' not in get_data(y.save_path)
+        assert y.Quest == "The Holy Grail"
+        y.Quest = "Never completed"
+        assert y.Quest == "Never completed"
+
+    def test_AUTOSAVE_8(self):
+        """
+        There might be a complicated problem when autosaving an inherited CleverDict e.g. y= CleverDict(x) where x is a CleverDict.
+
+        The super() might refer to CleverDict and might cause issues?
+
+        Inheriting from another CleverDict should NOT inherit the autosave/save
+        settings.
+        """
+        x = CleverDict({"total": 6, "usergroup": "Knights of Ni"})
+        x.add_alias("usergroup", "knights")
+        x.setattr_direct("Quest", "The Holy Grail")
+        y = CleverDict(x)
         assert y.save.__name__ == "save"
         y.autosave(fullcopy=True, silent=True)
         assert y.save.__name__ == "_auto_save_fullcopy"

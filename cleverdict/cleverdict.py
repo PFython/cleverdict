@@ -17,12 +17,12 @@ Change log
 
 version 1.8.2
 -------------
-Added exclude= as alias for ignore= (for Marshmallow fans)
+Added exclude= as an alternative for ignore= (for Marshmallow fans)
 Added only= (for Marshmallow fans)
-Added exclude= ignore= and only= to __init__
+Added exclude= ignore= and only= to __init__ for selective import
 Made exclude= ignore= and only= permissive (lists OR single item strings)
 Refactored using preprocess_options()
-y=CleverDict(x) now imports a fullcopy by default e.g. including _aliases/_vars
+y=CleverDict(x) now imports a fullcopy of x e.g. including _aliases/_vars
 
 version 1.8.1
 ---------------------------
