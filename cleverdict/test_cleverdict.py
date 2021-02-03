@@ -295,7 +295,6 @@ class Test_Misc:
         )
 
     def test_fullcopy_plus_filter(self):
-        # TODO:
         """ fullcopy= can be used with other arguments only= ignore= or exclude=.  Error must be handled gracefully."""
         x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         assert "Apples" not in x.to_json(fullcopy=True, ignore="Apples")
@@ -364,15 +363,20 @@ class Test_Misc:
         assert list(x.keys()) == ['Tino', 'Isaac']
 
         # from_json
-
-        json_data = '{"None": null, "data": "123xyz"}'
-        x = CleverDict.from_json(json_data, only="data")
-        assert list(x.keys()) == ['data']
         json_data = '{"None": null, "data": "123xyz"}'
         x = CleverDict.from_json(json_data, exclude="data")
         assert list(x.keys()) == ['None']
+        json_data = '{"None": null, "data": "123xyz"}'
+        x = CleverDict.from_json(json_data, only="data")
+        assert list(x.keys()) == ['data']
 
         # from_lines
+        lines = 'Green\nYellow\nPurple'
+        x = CleverDict.from_lines(lines, exclude="Yellow")
+        assert list(x.values()) == ['Green', 'Purple']
+        x = CleverDict.from_lines(lines, only="Purple")
+        assert list(x.values()) == ['Purple']
+
         # Refactor bool block into be_permissive
 
     def test_too_many_filters_with_init(self):

@@ -339,8 +339,8 @@ class CleverDict(dict):
                 raise TypeError(
                     "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
                 )
-            if exclude and ignore is None:
-                ignore = exclude
+            if exclude and ignore is None:  # use ignore; reset exclude
+                ignore, exclude = exclude, ignore
             if ignore:
                 if isinstance(_mapping, dict):
                     _mapping = {k: v for k, v in _mapping.items() if k not in ignore}
@@ -425,8 +425,8 @@ class CleverDict(dict):
             raise TypeError(
                 "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
             )
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
@@ -557,8 +557,8 @@ class CleverDict(dict):
             id = ids[0]
         else:
             id = "x"
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
@@ -732,8 +732,8 @@ class CleverDict(dict):
             raise TypeError(
                 "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
             )
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
@@ -764,8 +764,8 @@ class CleverDict(dict):
             raise TypeError(
                 "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
             )
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
@@ -805,8 +805,8 @@ class CleverDict(dict):
             raise TypeError(
                 "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
             )
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore:
             iterable = {k: value for k in iterable if k not in ignore}
         if only:
@@ -849,8 +849,8 @@ class CleverDict(dict):
             raise TypeError(
                 "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
             )
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
@@ -951,8 +951,8 @@ class CleverDict(dict):
             raise TypeError(
                 "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
             )
-        if exclude and ignore is None:
-            ignore = exclude
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
         if ignore is None and exclude is None:
             ignore = set()
         ignore = set(ignore) | CleverDict.ignore
@@ -984,7 +984,7 @@ class CleverDict(dict):
             return json_str
 
     @classmethod
-    def from_json(cls, json_data=None, file_path=None):
+    def from_json(cls, json_data=None, file_path=None, ignore=None, exclude=None, only=None):
         """
         Creates a new CleverDict object and loads data from a JSON object or
         file.
@@ -997,15 +997,32 @@ class CleverDict(dict):
         json_data: str
             JSON formatted string, typically created by json.dumps() : str
 
+        ignore: iterable | str
+            Any keys/aliases to ignore from output.  Ignoring an alias ignores
+            all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+
         Returns
         -------
         New CleverDict: CleverDict
         """
+        ignore, exclude, only = be_permissive(ignore, exclude, only)
+        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
+            raise TypeError(
+                "Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
+            )
+        if exclude and ignore is None:  # use ignore; reset exclude
+            ignore, exclude = exclude, ignore
+        kwargs = {"ignore": ignore, "exclude": exclude, "only": only}
         if json_data and file_path:
             raise ValueError("both json_data and file_path specified")
         if not (json_data or file_path):
             raise ValueError("neither json_data nor file_path specified")
-
         if file_path:
             with open(file_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
@@ -1015,9 +1032,9 @@ class CleverDict(dict):
             _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
             _aliases = {k: v for k, v in data["_aliases"].items()}
             _vars = data["_vars"]
-            return cls(_mapping, _aliases=_aliases, _vars=_vars)
+            return cls(_mapping, _aliases=_aliases, _vars=_vars, **kwargs)
         else:
-            return cls(data)
+            return cls(data, **kwargs)
 
     @classmethod
     def get_new_save_path(cls):
