@@ -21,6 +21,8 @@ Added exclude= as alias for ignore= (for Marshmallow fans)
 Added only= (for Marshmallow fans)
 Added exclude= ignore= and only= to __init__
 Made exclude= ignore= and only= permissive (lists OR single item strings)
+Refactored using preprocess_options()
+y=CleverDict(x) now imports a fullcopy by default e.g. including _aliases/_vars
 
 version 1.8.1
 ---------------------------
@@ -244,7 +246,7 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     )
 
 
-def preprocess(ignore, exclude, only):
+def preprocess_options(ignore, exclude, only):
     """
     Performs preparatory transformations of ignore, exclude and only, inculding:
 
@@ -351,7 +353,7 @@ class CleverDict(dict):
 
     def __init__(
         self,
-        _mapping=(),
+        mapping=(),
         _aliases=None,
         _vars={},
         save=None,
@@ -361,31 +363,40 @@ class CleverDict(dict):
         exclude=None,
         **kwargs,
     ):
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
         self.setattr_direct("_aliases", {})
+        if isinstance(mapping, CleverDict):
+            # for key, alias in mapping._aliases.items():
+            #     if key != alias:
+            #         self.add_alias(key, alias)
+            for attribute, value in mapping._vars.items():
+                self.setattr_direct(attribute, value)
+            self._aliases = mapping._aliases
+        else:
+            data = None
         with Expand(CleverDict.expand if _aliases is None else False):
             if save is not None:
                 self.set_autosave(save)
             if delete is not None:
                 self.set_autodelete(delete)
-
             if ignore:
-                if isinstance(_mapping, dict):
-                    _mapping = {k: v for k, v in _mapping.items() if k not in ignore}
-                if isinstance(_mapping, list):
-                    _mapping = {k: v for k, v in _mapping if k not in ignore}
+                if isinstance(mapping, dict):
+                    mapping = {k: v for k, v in mapping.items() if k not in ignore}
+                if isinstance(mapping, list):
+                    mapping = {k: v for k, v in mapping if k not in ignore}
             if only:
-                if isinstance(_mapping, dict):
-                    _mapping = {k: v for k, v in _mapping.items() if k in only}
-                if isinstance(_mapping, list):
-                    _mapping = {k: v for k, v in _mapping if k in only}
-
-            self.update(_mapping, **kwargs)
+                if isinstance(mapping, dict):
+                    mapping = {k: v for k, v in mapping.items() if k in only}
+                if isinstance(mapping, list):
+                    mapping = {k: v for k, v in mapping if k in only}
+            self.update(mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
+
+
 
     def __setattr__(self, name, value):
         if name in vars(self).keys():
@@ -448,13 +459,13 @@ class CleverDict(dict):
         only: iterable | str
             Only return output for specified keys
         """
-        ignore, only = preprocess(ignore, exclude, only)
-        _mapping = self._filtered_mapping(ignore, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         _aliases = {
-            k: v for k, v in self._aliases.items() if k not in self and v in _mapping
+            k: v for k, v in self._aliases.items() if k not in self and v in mapping
         }
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
-        return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+        return f"{self.__class__.__name__}({repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
     @property
     def _vars(self):
@@ -519,7 +530,7 @@ class CleverDict(dict):
         else:
             return mapping
 
-    def update(self, _mapping=(), **kwargs):
+    def update(self, mapping=(), **kwargs):
         """
         Parameters
         ----------
@@ -529,10 +540,10 @@ class CleverDict(dict):
             If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
             In either case, this is followed by: for k in F:  D[k] = F[k]
         """
-        if hasattr(_mapping, "items"):
-            _mapping = getattr(_mapping, "items")()
+        if hasattr(mapping, "items"):
+            mapping = getattr(mapping, "items")()
 
-        for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
+        for k, v in itertools.chain(mapping, getattr(kwargs, "items")()):
             self.__setitem__(k, v)
 
     def info(self, as_str=False, ignore=None, exclude=None, only=None):
@@ -560,7 +571,8 @@ class CleverDict(dict):
         information (if as_str is True): str
         None (if as_str is False)
         """
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         indent = "    "
         frame = inspect.currentframe().f_back.f_locals
         ids = sorted(k for k, v in frame.items() if v is self)
@@ -572,7 +584,6 @@ class CleverDict(dict):
             id = ids[0]
         else:
             id = "x"
-        mapping = self._filtered_mapping(ignore, only)
         for k, v in mapping.items():
             parts = []
             for ak, av in self._aliases.items():
@@ -737,7 +748,7 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
         mapping = self._filtered_mapping(ignore, only)
         return [(k, v) for k, v in mapping.items()]
 
@@ -760,7 +771,7 @@ class CleverDict(dict):
         -------
         dict
         """
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
         return self._filtered_mapping(ignore=ignore, only=only)
 
     @classmethod
@@ -792,7 +803,7 @@ class CleverDict(dict):
         -------
         New CleverDict with keys from iterable and values equal to value.
         """
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
         if ignore:
             iterable = {k: value for k in iterable if k not in ignore}
         if only:
@@ -830,8 +841,8 @@ class CleverDict(dict):
         values joined by "\n" (if file_path is not specified) : str
         None (if file_path is specified)
         """
-        ignore, only = preprocess(ignore, exclude, only)
-        to_save = self._filtered_mapping(ignore, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         if start_from_key is None:
             start_from_key = self.get_aliases()[0]
         else:
@@ -840,7 +851,7 @@ class CleverDict(dict):
             except KeyError:
                 raise
         lines = {}
-        for k, v in to_save.items():
+        for k, v in mapping.items():
             if k == start_from_key or lines:
                 lines.update({k: v})
         lines = "\n".join(lines.values())
@@ -885,7 +896,7 @@ class CleverDict(dict):
         -----
         specifying both lines and file_path raises a ValueError
         """
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
         if not isinstance(start_from_key, int):
             raise TypeError(".from_lines(start_from_key=) must be an integer")
         if lines and file_path:
@@ -938,19 +949,18 @@ class CleverDict(dict):
         Derived only from dictionary data if fullcopy==False
         Includes ._aliases and ._vars if fullcopy==True
         """
-        ignore, only = preprocess(ignore, exclude, only)
-
-        _mapping = self._filtered_mapping(ignore, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
 
         if not fullcopy:
-            json_str = json.dumps(_mapping, indent=4)
+            json_str = json.dumps(mapping, indent=4)
         else:
             _aliases = {
                 k: v
                 for k, v in self._aliases.items()
-                if k not in self and v in _mapping
+                if k not in self and v in mapping
             }
-            _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
+            _mapping_encoded = {repr(k): v for k, v in mapping.items()}
             _aliases = {k: v for k, v in _aliases.items() if k != v}
             _vars = {k: v for k, v in vars(self).items() if k not in ignore}
             json_str = json.dumps(
@@ -995,7 +1005,7 @@ class CleverDict(dict):
         -------
         New CleverDict: CleverDict
         """
-        ignore, only = preprocess(ignore, exclude, only)
+        ignore, only = preprocess_options(ignore, exclude, only)
         kwargs = {"ignore": ignore, "only": only}
         if json_data and file_path:
             raise ValueError("both json_data and file_path specified")
@@ -1007,10 +1017,10 @@ class CleverDict(dict):
         else:
             data = json.loads(json_data)
         if set(data.keys()) == {"_mapping_encoded", "_aliases", "_vars"}:
-            _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
+            mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
             _aliases = {k: v for k, v in data["_aliases"].items()}
             _vars = data["_vars"]
-            return cls(_mapping, _aliases=_aliases, _vars=_vars, **kwargs)
+            return cls(mapping, _aliases=_aliases, _vars=_vars, **kwargs)
         else:
             return cls(data, **kwargs)
 

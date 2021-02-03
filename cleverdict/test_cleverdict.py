@@ -635,6 +635,13 @@ class Test_Misc:
         except ModuleNotFoundError:
             pytest.skip("could not import click or cleverdict")
 
+    def test_import_existing_cleverdict(test):
+        x = CleverDict({"name": "Peter"})
+        x.add_alias("name", "nom")
+        x.setattr_direct("private", "parts")
+        y = CleverDict(x)
+        assert y.nom == "Peter"
+        assert y.private == "parts"
 
 class Test_Internal_Logic:
     def test_raises_error(self):
