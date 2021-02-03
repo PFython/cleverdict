@@ -9,14 +9,20 @@ from datetime import datetime
 import types
 import inspect
 
+from typing_extensions import get_args
+
 """
 Change log
 ==========
 
 version 1.8.2
 -------------
-Added exclude= as alias for ignore= (for Marshmallow fans)
+Added exclude= as an alternative for ignore= (for Marshmallow fans)
 Added only= (for Marshmallow fans)
+Added exclude= ignore= and only= to __init__ for selective import
+Made exclude= ignore= and only= permissive (lists OR single item strings)
+Refactored using preprocess_options()
+y=CleverDict(x) now imports a fullcopy of x e.g. including _aliases/_vars
 
 version 1.8.1
 ---------------------------
@@ -240,6 +246,45 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     )
 
 
+def preprocess_options(ignore, exclude, only):
+    """
+    Performs preparatory transformations of ignore, exclude and only, inculding:
+
+    - Convert to iterables if single item string supplied.
+    - Check that only one argument is truthy (to avoid logic bombs).
+    - Fail gracefully if not.
+    - Set ignore if exclude was used, and reset exclude (to avoid logic bombs)
+    - Convert ignore to set() neither it nor exclude are specified
+
+    Parameters
+    ----------
+    ignore: None | list
+        Items to ignore during subsequent processing
+    exclude: None | list
+        Alternative alias for ignore
+    only: None | list
+        Items to exclusively include during subsequent processing
+
+    Returns
+    -------
+    tuple
+        (ignore, only)
+    """
+    if exclude and ignore is None:  # use ignore; reset exclude
+        ignore = exclude
+        exclude = None
+    if sum([bool(x) for x in (ignore, exclude, only)]) > 1:
+        if ignore != CleverDict.ignore:
+            raise TypeError(
+                f"Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
+            )
+    if ignore is None and exclude is None:
+        ignore = set()
+    ignore = [ignore] if isinstance(ignore, str) else ignore
+    ignore = set(ignore) | CleverDict.ignore
+    only = [only] if isinstance(only, str) else only
+    return ignore, only
+
 class Expand:
     def __init__(self, ok):
         """
@@ -307,20 +352,51 @@ class CleverDict(dict):
     expand = True
 
     def __init__(
-        self, _mapping=(), _aliases=None, _vars={}, save=None, delete=None, **kwargs
+        self,
+        mapping=(),
+        _aliases=None,
+        _vars={},
+        save=None,
+        delete=None,
+        only=None,
+        ignore=None,
+        exclude=None,
+        **kwargs,
     ):
+        ignore, only = preprocess_options(ignore, exclude, only)
         self.setattr_direct("_aliases", {})
+        if isinstance(mapping, CleverDict):
+            # for key, alias in mapping._aliases.items():
+            #     if key != alias:
+            #         self.add_alias(key, alias)
+            for attribute, value in mapping._vars.items():
+                self.setattr_direct(attribute, value)
+            self._aliases = mapping._aliases
+        else:
+            data = None
         with Expand(CleverDict.expand if _aliases is None else False):
             if save is not None:
                 self.set_autosave(save)
             if delete is not None:
                 self.set_autodelete(delete)
-            self.update(_mapping, **kwargs)
+            if ignore:
+                if isinstance(mapping, dict):
+                    mapping = {k: v for k, v in mapping.items() if k not in ignore}
+                if isinstance(mapping, list):
+                    mapping = {k: v for k, v in mapping if k not in ignore}
+            if only:
+                if isinstance(mapping, dict):
+                    mapping = {k: v for k, v in mapping.items() if k in only}
+                if isinstance(mapping, list):
+                    mapping = {k: v for k, v in mapping if k in only}
+            self.update(mapping, **kwargs)
             if _aliases is not None:
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
+
+
 
     def __setattr__(self, name, value):
         if name in vars(self).keys():
@@ -370,19 +446,26 @@ class CleverDict(dict):
         return NotImplemented
 
     def __repr__(self, ignore=None, exclude=None, only=None):
-        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
-            raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
-        if exclude and ignore is None:
-            ignore = exclude
-        if ignore is None and exclude is None:
-            ignore = set()
-        ignore = set(ignore) | CleverDict.ignore
-        _mapping = self._filtered_mapping(ignore)
+        """
+        Parameters
+        ----------
+
+        ignore: iterable | str
+            Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+        """
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         _aliases = {
-            k: v for k, v in self._aliases.items() if k not in self and v in _mapping
+            k: v for k, v in self._aliases.items() if k not in self and v in mapping
         }
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
-        return f"{self.__class__.__name__}({repr(_mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+        return f"{self.__class__.__name__}({repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
     @property
     def _vars(self):
@@ -412,7 +495,7 @@ class CleverDict(dict):
             return self._aliases[name]
         raise KeyError(name)
 
-    def _filtered_mapping(self, ignore):
+    def _filtered_mapping(self, ignore=None, only=False):
         """
         Internal method
         The user should use to_dict !
@@ -421,8 +504,14 @@ class CleverDict(dict):
 
         Parameters
         ----------
-        ignore: list
+        ignore: iterable | str
             Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
@@ -436,9 +525,12 @@ class CleverDict(dict):
         for k, v in self._aliases.items():
             if k in ignore and v in mapping:
                 del mapping[v]
-        return mapping
+        if only:
+            return {k: v for k, v in mapping.items() if k in only}
+        else:
+            return mapping
 
-    def update(self, _mapping=(), **kwargs):
+    def update(self, mapping=(), **kwargs):
         """
         Parameters
         ----------
@@ -448,10 +540,10 @@ class CleverDict(dict):
             If E is present and lacks a .keys() method, then does:  for k, v in E: D[k] = v
             In either case, this is followed by: for k in F:  D[k] = F[k]
         """
-        if hasattr(_mapping, "items"):
-            _mapping = getattr(_mapping, "items")()
+        if hasattr(mapping, "items"):
+            mapping = getattr(mapping, "items")()
 
-        for k, v in itertools.chain(_mapping, getattr(kwargs, "items")()):
+        for k, v in itertools.chain(mapping, getattr(kwargs, "items")()):
             self.__setitem__(k, v)
 
     def info(self, as_str=False, ignore=None, exclude=None, only=None):
@@ -465,13 +557,22 @@ class CleverDict(dict):
             if as_str is False, prints the information
             if as_str is True, returns the information as a string
 
+        ignore: iterable | str
+            Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+
         Returns
         -------
         information (if as_str is True): str
         None (if as_str is False)
         """
-        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
-            raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         indent = "    "
         frame = inspect.currentframe().f_back.f_locals
         ids = sorted(k for k, v in frame.items() if v is self)
@@ -483,12 +584,6 @@ class CleverDict(dict):
             id = ids[0]
         else:
             id = "x"
-        if exclude and ignore is None:
-            ignore = exclude
-        if ignore is None and exclude is None:
-            ignore = set()
-        ignore = set(ignore) | CleverDict.ignore
-        mapping = self._filtered_mapping(ignore)
         for k, v in mapping.items():
             parts = []
             for ak, av in self._aliases.items():
@@ -638,8 +733,14 @@ class CleverDict(dict):
 
         Paramters
         ---------
-        ignore : iterable
+        ignore: iterable | str
             Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
@@ -647,14 +748,8 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
-        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
-            raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
-        if exclude and ignore is None:
-            ignore = exclude
-        if ignore is None and exclude is None:
-            ignore = set()
-        ignore = set(ignore) | CleverDict.ignore
-        mapping = self._filtered_mapping(ignore)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         return [(k, v) for k, v in mapping.items()]
 
     def to_dict(self, ignore=None, exclude=None, only=None):
@@ -663,25 +758,24 @@ class CleverDict(dict):
 
         Parameters
         ----------
-        ignore: iterable
+        ignore: iterable | str
             Any keys or aliases to exclude from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
         dict
         """
-        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
-            raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
-        if exclude and ignore is None:
-            ignore = exclude
-        if ignore is None and exclude is None:
-            ignore = set()
-        ignore = set(ignore) | CleverDict.ignore
-
-        return self._filtered_mapping(ignore=ignore)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        return self._filtered_mapping(ignore=ignore, only=only)
 
     @classmethod
-    def fromkeys(cls, iterable, value):
+    def fromkeys(cls, iterable, value, ignore=None, exclude=None, only=None):
         """
         Instantiates an object using supplied keys/aliases and values e.g.
 
@@ -695,13 +789,30 @@ class CleverDict(dict):
         value: any
             used as the values for the new CleverDict
 
+        ignore: iterable | str
+            Any keys/aliases to ignore from output.  Ignoring an alias ignores
+            all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+
         Returns
         -------
         New CleverDict with keys from iterable and values equal to value.
         """
+        ignore, only = preprocess_options(ignore, exclude, only)
+        if ignore:
+            iterable = {k: value for k in iterable if k not in ignore}
+        if only:
+            iterable = {k: value for k in iterable if k in only}
         return CleverDict({k: value for k in iterable})
 
-    def to_lines(self, file_path=None, start_from_key=None, ignore=None, exclude=None, only=None):
+    def to_lines(
+        self, file_path=None, start_from_key=None, ignore=None, exclude=None, only=None
+    ):
         """
         Creates a line ("\n") delimited string or file using values for lines.
 
@@ -712,9 +823,15 @@ class CleverDict(dict):
             confused with slicing e.g. x[0] will fail for x = CleverDict({1:1})
             String keys allow for keys/aliases to be references e.g. "Footnote"
 
-        ignore: list
+        ignore: iterable | str
             Any keys/aliases to ignore from output.  Ignoring an alias ignores
             all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         file_path: str | pathlib.Path
             Path to the file (if any) to save to.
@@ -724,14 +841,8 @@ class CleverDict(dict):
         values joined by "\n" (if file_path is not specified) : str
         None (if file_path is specified)
         """
-        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
-            raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
-        if exclude and ignore is None:
-            ignore = exclude
-        if ignore is None and exclude is None:
-            ignore = set()
-        ignore = set(ignore) | CleverDict.ignore
-        to_save = self._filtered_mapping(ignore)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
         if start_from_key is None:
             start_from_key = self.get_aliases()[0]
         else:
@@ -740,7 +851,7 @@ class CleverDict(dict):
             except KeyError:
                 raise
         lines = {}
-        for k, v in to_save.items():
+        for k, v in mapping.items():
             if k == start_from_key or lines:
                 lines.update({k: v})
         lines = "\n".join(lines.values())
@@ -750,7 +861,7 @@ class CleverDict(dict):
             file.write(lines)
 
     @classmethod
-    def from_lines(cls, lines=None, file_path=None, start_from_key=1):
+    def from_lines(cls, lines=None, file_path=None, start_from_key=1, ignore=None, exclude=None, only=None):
         """
         Creates a new CleverDict object and loads data from a line ('\n')
         delimited string or file.
@@ -767,6 +878,16 @@ class CleverDict(dict):
             The  (numeric) key to start the data dictionary with.  Default=1.
             Typically set to 0 for Pythonic line counting (starting at 0 not 1).
 
+        ignore: iterable | str
+            Any keys/aliases to ignore from output.  Ignoring an alias ignores
+            all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+
         Returns
         -------
         New CleverDict: CleverDict
@@ -775,6 +896,7 @@ class CleverDict(dict):
         -----
         specifying both lines and file_path raises a ValueError
         """
+        ignore, only = preprocess_options(ignore, exclude, only)
         if not isinstance(start_from_key, int):
             raise TypeError(".from_lines(start_from_key=) must be an integer")
         if lines and file_path:
@@ -785,9 +907,15 @@ class CleverDict(dict):
             with open(file_path, "r", encoding="utf-8") as file:
                 lines = file.read()
         index = {k + start_from_key: v.strip() for k, v in enumerate(lines.split("\n"))}
+        if only:
+            index = {k:v for k,v in index.items() if v in only}
+        if ignore:
+            index = {k:v for k,v in index.items() if v not in ignore}
         return cls(index)
 
-    def to_json(self, file_path=None, fullcopy=False, ignore=None, exclude=None, only=None):
+    def to_json(
+        self, file_path=None, fullcopy=False, ignore=None, exclude=None, only=None
+    ):
 
         """
         Generates a JSON formatted string representing the CleverDict data and
@@ -801,9 +929,15 @@ class CleverDict(dict):
         fullcopy: bool
              Includes ._aliases and ._vars if True
 
-        ignore: list
+        ignore: iterable | str
             Any keys/aliases to ignore from output.  Ignoring an alias ignores
             all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
 
         Returns
         -------
@@ -815,24 +949,18 @@ class CleverDict(dict):
         Derived only from dictionary data if fullcopy==False
         Includes ._aliases and ._vars if fullcopy==True
         """
-        if sum([bool(x) for x in (exclude, only, ignore)]) > 1:
-            raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
-        if exclude and ignore is None:
-            ignore = exclude
-        if ignore is None and exclude is None:
-            ignore = set()
-        ignore = set(ignore) | CleverDict.ignore
-        _mapping = self._filtered_mapping(ignore)
+        ignore, only = preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
 
         if not fullcopy:
-            json_str = json.dumps(_mapping, indent=4)
+            json_str = json.dumps(mapping, indent=4)
         else:
             _aliases = {
                 k: v
                 for k, v in self._aliases.items()
-                if k not in self and v in _mapping
+                if k not in self and v in mapping
             }
-            _mapping_encoded = {repr(k): v for k, v in _mapping.items()}
+            _mapping_encoded = {repr(k): v for k, v in mapping.items()}
             _aliases = {k: v for k, v in _aliases.items() if k != v}
             _vars = {k: v for k, v in vars(self).items() if k not in ignore}
             json_str = json.dumps(
@@ -850,7 +978,7 @@ class CleverDict(dict):
             return json_str
 
     @classmethod
-    def from_json(cls, json_data=None, file_path=None):
+    def from_json(cls, json_data=None, file_path=None, ignore=None, exclude=None, only=None):
         """
         Creates a new CleverDict object and loads data from a JSON object or
         file.
@@ -863,27 +991,38 @@ class CleverDict(dict):
         json_data: str
             JSON formatted string, typically created by json.dumps() : str
 
+        ignore: iterable | str
+            Any keys/aliases to ignore from output.  Ignoring an alias ignores
+            all other aliases and the primary key; likewise ignoring the key.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output for specified keys
+
         Returns
         -------
         New CleverDict: CleverDict
         """
+        ignore, only = preprocess_options(ignore, exclude, only)
+        kwargs = {"ignore": ignore, "only": only}
         if json_data and file_path:
             raise ValueError("both json_data and file_path specified")
         if not (json_data or file_path):
             raise ValueError("neither json_data nor file_path specified")
-
         if file_path:
             with open(file_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
         else:
             data = json.loads(json_data)
         if set(data.keys()) == {"_mapping_encoded", "_aliases", "_vars"}:
-            _mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
+            mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
             _aliases = {k: v for k, v in data["_aliases"].items()}
             _vars = data["_vars"]
-            return cls(_mapping, _aliases=_aliases, _vars=_vars)
+            return cls(mapping, _aliases=_aliases, _vars=_vars, **kwargs)
         else:
-            return cls(data)
+            return cls(data, **kwargs)
 
     @classmethod
     def get_new_save_path(cls):
