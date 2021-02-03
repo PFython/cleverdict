@@ -343,39 +343,45 @@ class Test_Misc:
         assert list(x.keys()) == ["Oranges"]
 
         # CleverDict
-        x = CleverDict(
-            {"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
+        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         y = CleverDict(x, only="Apples")
         assert list(y.keys()) == ["Apples"]
         y = CleverDict(x, exclude="Apples")
-        assert list(y.keys()) == ['Bananas', 'Oranges']
+        assert list(y.keys()) == ["Bananas", "Oranges"]
 
         # list of tuples/lists
-        x = CleverDict([("value1", "one"), ["value2", "two"], ("value3", "three")], ignore=["value1", "value2"])
+        x = CleverDict(
+            [("value1", "one"), ["value2", "two"], ("value3", "three")],
+            ignore=["value1", "value2"],
+        )
         assert list(x.keys()) == ["value3"]
-        x = CleverDict([("value1", "one"), ["value2", "two"], ("value3", "three")], only=["value1"])
+        x = CleverDict(
+            [("value1", "one"), ["value2", "two"], ("value3", "three")], only=["value1"]
+        )
         assert list(x.keys()) == ["value1"]
 
         # fromkeys
         x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9", only="Abigail")
         assert list(x.keys()) == ["Abigail"]
-        x = CleverDict.fromkeys(["Abigail", "Tino", "Isaac"], "Year 9", exclude="Abigail")
-        assert list(x.keys()) == ['Tino', 'Isaac']
+        x = CleverDict.fromkeys(
+            ["Abigail", "Tino", "Isaac"], "Year 9", exclude="Abigail"
+        )
+        assert list(x.keys()) == ["Tino", "Isaac"]
 
         # from_json
         json_data = '{"None": null, "data": "123xyz"}'
         x = CleverDict.from_json(json_data, exclude="data")
-        assert list(x.keys()) == ['None']
+        assert list(x.keys()) == ["None"]
         json_data = '{"None": null, "data": "123xyz"}'
         x = CleverDict.from_json(json_data, only="data")
-        assert list(x.keys()) == ['data']
+        assert list(x.keys()) == ["data"]
 
         # from_lines
-        lines = 'Green\nYellow\nPurple'
+        lines = "Green\nYellow\nPurple"
         x = CleverDict.from_lines(lines, exclude="Yellow")
-        assert list(x.values()) == ['Green', 'Purple']
+        assert list(x.values()) == ["Green", "Purple"]
         x = CleverDict.from_lines(lines, only="Purple")
-        assert list(x.values()) == ['Purple']
+        assert list(x.values()) == ["Purple"]
 
         # Refactor bool block into be_permissive
 
@@ -643,11 +649,11 @@ class Test_Misc:
         y = CleverDict(x)
         assert y.nom == "Peter"
         assert y.private == "parts"
-        assert list(y.keys()) == ['name', 'nationality']
+        assert list(y.keys()) == ["name", "nationality"]
         y = CleverDict(x, only="name")
-        assert list(y.keys()) == ['name']
+        assert list(y.keys()) == ["name"]
         y = CleverDict(x, exclude="name")
-        assert list(y.keys()) == ['nationality']
+        assert list(y.keys()) == ["nationality"]
 
 
 class Test_Internal_Logic:

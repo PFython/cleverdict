@@ -15,7 +15,7 @@ from typing_extensions import get_args
 Change log
 ==========
 
-version 1.8.2
+version 1.9.0
 -------------
 Added exclude= as an alternative for ignore= (for Marshmallow fans)
 Added only= (for Marshmallow fans)
@@ -285,6 +285,7 @@ def preprocess_options(ignore, exclude, only):
     only = [only] if isinstance(only, str) else only
     return ignore, only
 
+
 class Expand:
     def __init__(self, ok):
         """
@@ -395,8 +396,6 @@ class CleverDict(dict):
                     self._add_alias(v, k)
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
-
-
 
     def __setattr__(self, name, value):
         if name in vars(self).keys():
@@ -861,7 +860,15 @@ class CleverDict(dict):
             file.write(lines)
 
     @classmethod
-    def from_lines(cls, lines=None, file_path=None, start_from_key=1, ignore=None, exclude=None, only=None):
+    def from_lines(
+        cls,
+        lines=None,
+        file_path=None,
+        start_from_key=1,
+        ignore=None,
+        exclude=None,
+        only=None,
+    ):
         """
         Creates a new CleverDict object and loads data from a line ('\n')
         delimited string or file.
@@ -908,9 +915,9 @@ class CleverDict(dict):
                 lines = file.read()
         index = {k + start_from_key: v.strip() for k, v in enumerate(lines.split("\n"))}
         if only:
-            index = {k:v for k,v in index.items() if v in only}
+            index = {k: v for k, v in index.items() if v in only}
         if ignore:
-            index = {k:v for k,v in index.items() if v not in ignore}
+            index = {k: v for k, v in index.items() if v not in ignore}
         return cls(index)
 
     def to_json(
@@ -956,9 +963,7 @@ class CleverDict(dict):
             json_str = json.dumps(mapping, indent=4)
         else:
             _aliases = {
-                k: v
-                for k, v in self._aliases.items()
-                if k not in self and v in mapping
+                k: v for k, v in self._aliases.items() if k not in self and v in mapping
             }
             _mapping_encoded = {repr(k): v for k, v in mapping.items()}
             _aliases = {k: v for k, v in _aliases.items() if k != v}
@@ -978,7 +983,9 @@ class CleverDict(dict):
             return json_str
 
     @classmethod
-    def from_json(cls, json_data=None, file_path=None, ignore=None, exclude=None, only=None):
+    def from_json(
+        cls, json_data=None, file_path=None, ignore=None, exclude=None, only=None
+    ):
         """
         Creates a new CleverDict object and loads data from a JSON object or
         file.
