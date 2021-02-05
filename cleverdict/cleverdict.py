@@ -13,13 +13,17 @@ import inspect
 Change log
 ==========
 
+version 1.9.1
+-------------
+Handles edge cases handling errors where only=/ignore=/exclude= 0 and 1 (int)
+
 version 1.9.0
 -------------
 Added exclude= as an alternative for ignore= (for Marshmallow fans)
 Added only= (for Marshmallow fans)
 Added exclude= ignore= and only= to __init__ for selective import
 Made exclude= ignore= and only= permissive (lists OR single item strings)
-Refactored using preprocess_options()
+Refactored using _preprocess_options()
 y=CleverDict(x) now imports a fullcopy of x e.g. including _aliases/_vars
 
 version 1.8.1
@@ -244,23 +248,23 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     )
 
 
-def preprocess_options(ignore, exclude, only):
+def _preprocess_options(ignore, exclude, only):
     """
     Performs preparatory transformations of ignore, exclude and only, inculding:
 
     - Convert to iterables if single item string supplied.
-    - Check that only one argument is truthy (to avoid logic bombs).
+    - Check that only one argument is not None (to avoid logic bombs).
     - Fail gracefully if not.
     - Set ignore if exclude was used, and reset exclude (to avoid logic bombs)
     - Convert ignore to set() neither it nor exclude are specified
 
     Parameters
     ----------
-    ignore: None | list
+    ignore: None | iterable
         Items to ignore during subsequent processing
-    exclude: None | list
-        Alternative alias for ignore
-    only: None | list
+    exclude: None | iterable
+        Alias for ignore
+    only: None | iterable
         Items to exclusively include during subsequent processing
 
     Returns
@@ -270,18 +274,30 @@ def preprocess_options(ignore, exclude, only):
     """
 
     def make_set(arg):
-        if arg is None or arg == CleverDict.ignore:
+        if arg is None:
             return set()
-        return set(arg) if not isinstance(arg, str) else {arg}
+        return (
+            set(arg) if hasattr(arg, "__iter__") and not isinstance(arg, str) else {arg}
+        )
 
-    only = make_set(only)
-    ignore = make_set(ignore)
-    exclude = make_set(exclude)
-    if sum([bool(x) for x in (ignore, exclude, only)]) > 1:
+    if ignore == CleverDict.ignore:
+        ignore = None
+    if exclude == CleverDict.ignore:
+        exclude = None
+
+    if sum(x is not None for x in (ignore, exclude, only)) > 1:
         raise TypeError(
             f"Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
         )
-    return (ignore or exclude) | CleverDict.ignore, only
+
+    if only is not None:  # leave only is None for proper only tests
+        only = (
+            set(only)
+            if hasattr(only, "__iter__") and not isinstance(only, str)
+            else {only}
+        )
+
+    return make_set(ignore) | make_set(exclude) | CleverDict.ignore, only
 
 
 class Expand:
@@ -362,7 +378,7 @@ class CleverDict(dict):
         exclude=None,
         **kwargs,
     ):
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         self.setattr_direct("_aliases", {})
         if isinstance(mapping, CleverDict):
             # for key, alias in mapping._aliases.items():
@@ -383,7 +399,7 @@ class CleverDict(dict):
                     mapping = {k: v for k, v in mapping.items() if k not in ignore}
                 if isinstance(mapping, list):
                     mapping = {k: v for k, v in mapping if k not in ignore}
-            if only:
+            if only is not None:
                 if isinstance(mapping, dict):
                     mapping = {k: v for k, v in mapping.items() if k in only}
                 if isinstance(mapping, list):
@@ -456,7 +472,7 @@ class CleverDict(dict):
         only: iterable | str
             Only return output for specified keys
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         mapping = self._filtered_mapping(ignore, only)
         _aliases = {
             k: v for k, v in self._aliases.items() if k not in self and v in mapping
@@ -522,7 +538,7 @@ class CleverDict(dict):
         for k, v in self._aliases.items():
             if k in ignore and v in mapping:
                 del mapping[v]
-        if only:
+        if only is not None:
             return {k: v for k, v in mapping.items() if k in only}
         else:
             return mapping
@@ -568,7 +584,7 @@ class CleverDict(dict):
         information (if as_str is True): str
         None (if as_str is False)
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         mapping = self._filtered_mapping(ignore, only)
         indent = "    "
         frame = inspect.currentframe().f_back.f_locals
@@ -745,7 +761,7 @@ class CleverDict(dict):
         [(1, "one"), (2, "two")]
 
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         mapping = self._filtered_mapping(ignore, only)
         return [(k, v) for k, v in mapping.items()]
 
@@ -768,7 +784,7 @@ class CleverDict(dict):
         -------
         dict
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         return self._filtered_mapping(ignore=ignore, only=only)
 
     @classmethod
@@ -800,10 +816,10 @@ class CleverDict(dict):
         -------
         New CleverDict with keys from iterable and values equal to value.
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         if ignore:
             iterable = {k: value for k in iterable if k not in ignore}
-        if only:
+        if only is not None:
             iterable = {k: value for k in iterable if k in only}
         return CleverDict({k: value for k in iterable})
 
@@ -838,7 +854,7 @@ class CleverDict(dict):
         values joined by "\n" (if file_path is not specified) : str
         None (if file_path is specified)
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         mapping = self._filtered_mapping(ignore, only)
         if start_from_key is None:
             start_from_key = self.get_aliases()[0]
@@ -901,7 +917,7 @@ class CleverDict(dict):
         -----
         specifying both lines and file_path raises a ValueError
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         if not isinstance(start_from_key, int):
             raise TypeError(".from_lines(start_from_key=) must be an integer")
         if lines and file_path:
@@ -912,7 +928,7 @@ class CleverDict(dict):
             with open(file_path, "r", encoding="utf-8") as file:
                 lines = file.read()
         index = {k + start_from_key: v.strip() for k, v in enumerate(lines.split("\n"))}
-        if only:
+        if only is not None:
             index = {k: v for k, v in index.items() if v in only}
         if ignore:
             index = {k: v for k, v in index.items() if v not in ignore}
@@ -954,7 +970,7 @@ class CleverDict(dict):
         Derived only from dictionary data if fullcopy==False
         Includes ._aliases and ._vars if fullcopy==True
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         mapping = self._filtered_mapping(ignore, only)
 
         if not fullcopy:
@@ -1010,7 +1026,7 @@ class CleverDict(dict):
         -------
         New CleverDict: CleverDict
         """
-        ignore, only = preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
         kwargs = {"ignore": ignore, "only": only}
         if json_data and file_path:
             raise ValueError("both json_data and file_path specified")

@@ -265,12 +265,32 @@ class Test_Misc:
         """only=[list] should return output ONLY matching the given keys"""
         x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         a_and_o = CleverDict({"Apples": "Green", "Oranges": "Purple"})
-        for (
-            func
-        ) in "__repr__() to_json() to_dict() to_list() to_lines() info(,as_str=True)".split():
-            result1 = eval("x." + func.replace("(", "(only=['Apples', 'Oranges']"))
-            result2 = eval("a_and_o." + func.replace(",as_str", "as_str"))
+        for func in "__repr__ to_json to_dict to_list to_lines info".split():
+            as_str = {"as_str": True} if func == "info" else {}
+            result1 = getattr(x, func)(only=["Apples", "Oranges"], **as_str)
+            result2 = getattr(a_and_o, func)(
+                **({"as_str": True} if func == "info" else {})
+            )
             assert str(result1) == str(result2).replace("a_and_o", "x")
+
+    def test_only_edge_cases(self):
+        x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
+        with pytest.raises(TypeError):
+            x.to_list(exclude=[], only=[])
+            x.to_list(ignore=[], only=[])
+            x.to_list(exclude=[], ignore=[])
+            x.to_list(exclude=[], ignore=[], only=[])
+        x.to_list(
+            ignore=CleverDict.ignore, exclude=CleverDict.ignore, only=CleverDict.ignore
+        )
+
+        x = CleverDict({0: "Zero", 1: "One"})
+        assert x.to_list(only=[1]) == [(1, "One")]
+        assert x.to_list(ignore=[0]) == [(1, "One")]
+        assert x.to_list(exclude=[0]) == [(1, "One")]
+        assert x.to_list(only=1) == [(1, "One")]
+        assert x.to_list(ignore=0) == [(1, "One")]
+        assert x.to_list(exclude=0) == [(1, "One")]
 
     def test_permissive(self):
         """
@@ -315,15 +335,6 @@ class Test_Misc:
             for args in perms:
                 with pytest.raises(TypeError):
                     eval("x." + func.replace("(", "(" + args))
-
-    def test_bool_logic_with_bool_keys(self):
-        """Internal logic of preprocess() might be tricked if single item
-        (bool) key is supplied"""
-        x = CleverDict({1: "include me", 0: "exclude/ignore me"})
-        with pytest.raises(TypeError):
-            x.to_list(only=0, ignore=0)
-        with pytest.raises(TypeError):
-            x.to_json(ignore=1, exclude=0)
 
     def test_filters_with_init(self):
         """
@@ -654,7 +665,7 @@ class Test_Misc:
         x = CleverDict({"name": "Peter", "nationality": "British"})
         x.add_alias("name", "nom")
         x.setattr_direct("private", "parts")
-        x.autosave()
+        x.autosave(silent=True)
         y = CleverDict(x)
         assert y.nom == "Peter"
         assert y.private == "parts"
@@ -1129,6 +1140,7 @@ class Test_README_examples:
         )
         x.to_json(file_path="mydata.json")
         y = CleverDict.from_json(file_path="mydata.json")
+        os.remove("mydata.json")
         assert x == y
 
     def test_IMPORT_EXPORT_8(self):
@@ -1318,6 +1330,7 @@ class Test_README_examples:
         x.setattr_direct("Quest", "The Holy Grail")
         x.to_json(file_path="mydata.json", fullcopy=True)
         y = CleverDict.from_json(file_path="mydata.json")
+        os.remove("mydata.json")
         assert y.save.__name__ == "save"
         y.autosave(fullcopy=True, silent=True)
         assert y.save.__name__ == "_auto_save_fullcopy"
