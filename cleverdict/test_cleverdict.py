@@ -316,6 +316,15 @@ class Test_Misc:
                 with pytest.raises(TypeError):
                     eval("x." + func.replace("(", "(" + args))
 
+    def test_bool_logic_with_bool_keys(self):
+        """Internal logic of preprocess() might be tricked if single item
+        (bool) key is supplied"""
+        x = CleverDict({1: "include me", 0: "exclude/ignore me"})
+        with pytest.raises(TypeError):
+            x.to_list(only=0, ignore=0)
+        with pytest.raises(TypeError):
+            x.to_json(ignore=1, exclude=0)
+
     def test_filters_with_init(self):
         """
         only= exclude= ignore= should work as part of object instantiation.

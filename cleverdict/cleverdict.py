@@ -9,8 +9,6 @@ from datetime import datetime
 import types
 import inspect
 
-from typing_extensions import get_args
-
 """
 Change log
 ==========
@@ -270,20 +268,20 @@ def preprocess_options(ignore, exclude, only):
     tuple
         (ignore, only)
     """
-    if exclude and ignore is None:  # use ignore; reset exclude
-        ignore = exclude
-        exclude = None
+
+    def make_set(arg):
+        if arg is None or arg == CleverDict.ignore:
+            return set()
+        return set(arg) if not isinstance(arg, str) else {arg}
+
+    only = make_set(only)
+    ignore = make_set(ignore)
+    exclude = make_set(exclude)
     if sum([bool(x) for x in (ignore, exclude, only)]) > 1:
-        if ignore != CleverDict.ignore:
-            raise TypeError(
-                f"Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
-            )
-    if ignore is None and exclude is None:
-        ignore = set()
-    ignore = [ignore] if isinstance(ignore, str) else ignore
-    ignore = set(ignore) | CleverDict.ignore
-    only = [only] if isinstance(only, str) else only
-    return ignore, only
+        raise TypeError(
+            f"Only one argument from ['only=', 'ignore=', 'exclude='] allowed."
+        )
+    return (ignore or exclude) | CleverDict.ignore, only
 
 
 class Expand:
