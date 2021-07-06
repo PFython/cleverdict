@@ -422,7 +422,7 @@ To disable autosaving/autodeletion  just enter:
 To deactivate `.save()` or `.delete()` separately:
 
     >>> x.set_autosave()
-    >>> x.set_deleve()
+    >>> x.set_autodelete()
 
 > If you want to periodically open the `CleverDict` save folder to check for orphaned `.json` files from time to time, a handy shortcut is:
 
