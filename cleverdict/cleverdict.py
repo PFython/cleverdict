@@ -1,3 +1,5 @@
+from audioop import reverse
+import csv
 import os
 import json
 import inspect
@@ -7,6 +9,7 @@ from pathlib import Path
 from pprint import pprint
 from datetime import datetime
 import types
+from typing import Union
 import inspect
 
 """
@@ -1044,6 +1047,55 @@ class CleverDict(dict):
             return cls(mapping, _aliases=_aliases, _vars=_vars, **kwargs)
         else:
             return cls(data, **kwargs)
+
+
+    @classmethod
+    def from_csv(
+        cls,
+        file_path: Union[Path, str], 
+        header: bool = True, 
+        names: list = None, 
+        skip_rows: int = None,
+        delimiter: str = ',',
+        ignore: Union[str, list] = None,
+        exclude: Union[str, list] = None,
+        only: Union[str, list] = None
+        ) -> dict:
+        """Converts a CSV file to a Python dictionary"""
+
+        ignore, only = _preprocess_options(ignore, exclude, only)
+        kwargs = {"ignore": ignore, "only": only}
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+        if not file_path.exists():
+            raise ValueError('File not found')
+            
+        with open(file_path, "r", encoding="utf-8") as file:
+            reader = csv.reader(file, delimiter=delimiter)
+            csv_data = list(reader)
+
+        if skip_rows is None:
+            start_row = 1 if header else 0
+        else:
+            start_row = skip_rows + (1 if header else 0)
+        
+        if header:
+            names = csv_data[0]
+        elif names is not None:
+            if len(names) != len(csv_data[0]):
+                raise ValueError("Number of items in names does not match the number of columns")
+        else:
+            names = list(range(len(csv_data[0])))
+        
+        if len(names) != len(set(names)):
+            raise ValueError("Names contain one or more duplicate values")
+
+        data = {}
+        for idx, row in enumerate(csv_data[start_row:]):
+            current_row_dict = cls(dict(zip(names, row)), **kwargs)
+            data[idx] = current_row_dict
+            
+        return cls(data)
 
     @classmethod
     def get_new_save_path(cls):
