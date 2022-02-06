@@ -1052,23 +1052,77 @@ class CleverDict(dict):
     @classmethod
     def from_csv(
         cls,
-        file_path: Union[Path, str], 
+        file_path: Union[Path, str] = None, 
+        skip_rows: int = None,
+        nrows: int = None,
         header: bool = True, 
         names: list = None, 
-        skip_rows: int = None,
         delimiter: str = ',',
         ignore: Union[str, list] = None,
         exclude: Union[str, list] = None,
         only: Union[str, list] = None
         ) -> dict:
-        """Converts a CSV file to a Python dictionary"""
+        """Creates a new CleverDict object from a CSV file. 
+            Each row is also encoded as a CleverDict object with the key being the row number starting from zero
+
+        Parameters:
+        -----------
+        file_path: str | pathlib.Path
+            The path to the csv file
+        
+        skip_rows: int
+            Number of rows to skip from the beginning of the file
+            Does not count the header if header is True
+
+        nrows: int
+            Number of rows to read
+            Does not count the header if header is True
+
+        header: bool
+            Parses the first row of the csv file as headers
+
+        names: list
+            List of names to be used as keys instead of csv headers
+            Cannot be used if header is True
+            The number of items in list must be the same as number of columns
+
+        delimiter: str
+            The delimiter used in the csv file
+
+        ignore: str | list
+            Any keys to ignore from output.
+
+        exclude: iterable | str
+            Alias for ignore
+
+        only: iterable | str
+            Only return output with the specified keys
+
+        Returns
+        -------
+            New CleverDict: CleverDict
+
+        Raises:
+        -------
+        TypeError: 
+            If more than one of ignore, exclude, and only are specified
+        
+        ValueError:
+            - If file path is not provided or is invalid
+            - If names are specified without headers=False
+            - If number of items in names is not the same as number of columns
+            - If names, whether specified or read from the csv file, contains one or more duplicate values
+        """
+
+        if file_path is None:
+            raise ValueError("File path is not provided")
 
         ignore, only = _preprocess_options(ignore, exclude, only)
         kwargs = {"ignore": ignore, "only": only}
         if isinstance(file_path, str):
             file_path = Path(file_path)
         if not file_path.exists():
-            raise ValueError('File not found')
+            raise ValueError("File not found")
             
         with open(file_path, "r", encoding="utf-8") as file:
             reader = csv.reader(file, delimiter=delimiter)
@@ -1079,6 +1133,14 @@ class CleverDict(dict):
         else:
             start_row = skip_rows + (1 if header else 0)
         
+        if nrows is None:
+            end_row = None
+        else:
+            end_row = start_row + nrows
+
+        if header and names:
+            raise ValueError("Names cannot be specified if header is True.\nHint: To specify custom names for CSV with headers, set header=False and skip_rows=1")
+
         if header:
             names = csv_data[0]
         elif names is not None:
@@ -1091,7 +1153,7 @@ class CleverDict(dict):
             raise ValueError("Names contain one or more duplicate values")
 
         data = {}
-        for idx, row in enumerate(csv_data[start_row:]):
+        for idx, row in enumerate(csv_data[start_row:end_row]):
             current_row_dict = cls(dict(zip(names, row)), **kwargs)
             data[idx] = current_row_dict
             
