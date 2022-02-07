@@ -1,4 +1,3 @@
-from audioop import reverse
 import csv
 import os
 import json
@@ -302,6 +301,22 @@ def _preprocess_options(ignore, exclude, only):
 
     return make_set(ignore) | make_set(exclude) | CleverDict.ignore, only
 
+
+def _preprocess_csv(file_path: Union[str, Path], delimiter: str):
+    """Validates a CSV file and returns the data as a list of lists"""
+
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+    if not file_path.exists():
+        raise ValueError("File not found")
+        
+    with open(file_path, "r", encoding="utf-8") as file:
+        reader = csv.reader(file, delimiter=delimiter)
+        csv_data = list(reader)
+    if not csv_data:
+        raise ValueError("File is empty")
+
+    return csv_data
 
 class Expand:
     def __init__(self, ok):
@@ -1056,12 +1071,12 @@ class CleverDict(dict):
         skip_rows: int = None,
         nrows: int = None,
         header: bool = True, 
-        names: list = None, 
+        names: list = [], 
         delimiter: str = ',',
         ignore: Union[str, list] = None,
         exclude: Union[str, list] = None,
         only: Union[str, list] = None
-        ) -> dict:
+    ) -> dict:
         """Creates a new CleverDict object from a CSV file. 
             Each row is also encoded as a CleverDict object with the key being the row number starting from zero
 
@@ -1112,21 +1127,35 @@ class CleverDict(dict):
             - If names are specified without headers=False
             - If number of items in names is not the same as number of columns
             - If names, whether specified or read from the csv file, contains one or more duplicate values
+
+        Example:
+        --------
+        >>> data = [
+        ...    ['id', 'name', 'color'],
+        ...    [1, 'Banana', 'yellow'],
+        ...    [2, 'Apple', 'green']
+        ... ]
+        >>> with open('test_csv.csv', 'w') as f:
+        ...     f.write('\\n'.join(delimiter.join(str(k) for k in i) for i in data))
+        >>> data = CleverDict.from_csv(f'test_csv.csv')
+        >>> print(data)
+        CleverDict(
+            {
+                0: CleverDict({'id': '1', 'name': 'Banana', 'color': 'yellow'}, _aliases={}, _vars={}), 
+                1: CleverDict({'id': '2', 'name': 'Apple', 'color': 'green'}, _aliases={}, _vars={})
+            }, _aliases={'_0': 0, '_False': 0, '_1': 1, '_True': 1}, _vars={}
+        )
         """
 
         if file_path is None:
             raise ValueError("File path is not provided")
 
+        if not header and not names and (ignore or only):
+            raise ValueError('Ignore, Exclude, and Only cannot be used without column names')
         ignore, only = _preprocess_options(ignore, exclude, only)
         kwargs = {"ignore": ignore, "only": only}
-        if isinstance(file_path, str):
-            file_path = Path(file_path)
-        if not file_path.exists():
-            raise ValueError("File not found")
-            
-        with open(file_path, "r", encoding="utf-8") as file:
-            reader = csv.reader(file, delimiter=delimiter)
-            csv_data = list(reader)
+
+        csv_data = _preprocess_csv(file_path, delimiter)
 
         if skip_rows is None:
             start_row = 1 if header else 0
@@ -1141,14 +1170,12 @@ class CleverDict(dict):
         if header and names:
             raise ValueError("Names cannot be specified if header is True.\nHint: To specify custom names for CSV with headers, set header=False and skip_rows=1")
 
-        if header:
-            names = csv_data[0]
-        elif names is not None:
-            if len(names) != len(csv_data[0]):
+        if not names:
+            names = csv_data[0] if header else list(range(len(csv_data[0])))
+        print(names)
+        if len(names) != len(csv_data[0]):
                 raise ValueError("Number of items in names does not match the number of columns")
-        else:
-            names = list(range(len(csv_data[0])))
-        
+
         if len(names) != len(set(names)):
             raise ValueError("Names contain one or more duplicate values")
 
