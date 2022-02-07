@@ -334,7 +334,7 @@ class Test_Misc:
             perms = ["".join(list(x)).replace("=", "=['Yes'],") for x in perms]
             for args in perms:
                 with pytest.raises(TypeError):
-                    eval("x." + func.replace("(", "(" + args))
+                    eval("x." + func.replace("(", "(" + args))        
 
     def test_filters_with_init(self):
         """
@@ -674,6 +674,97 @@ class Test_Misc:
         assert list(y.keys()) == ["name"]
         y = CleverDict(x, exclude="name")
         assert list(y.keys()) == ["nationality"]
+
+
+class Test_From_CSV:
+    def create_csv(self, tmpdir, delimiter):
+        data = [
+                ['id', 'name', 'color'],
+                [1, 'Banana', 'yellow'],
+                [2, 'Apple', 'green'],
+                [3, 'Blueberry', 'blue'],
+                [4, 'Kinnow', 'orange'],
+                [5, 'Kiwi', 'brown']
+            ]
+        with open(f'{tmpdir}/test_csv.csv', 'w') as f:
+            f.write('\n'.join(delimiter.join(str(k) for k in i) for i in data))
+
+    def test_missing_file(self):
+        """Creates a csv file from data and tests the output"""
+
+        with pytest.raises(ValueError):
+            CleverDict.from_csv()
+        with pytest.raises(ValueError):
+            CleverDict.from_csv('test_csv.csv')
+
+    def test_header_names(self, tmpdir):
+        self.create_csv(tmpdir, delimiter=',')
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv')
+        assert 0 in data.keys()
+        assert len(data.keys()) == 5
+        assert data._0.name == 'Banana'
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, skip_rows=1, names=['sl', 'fruit', 'appearance'])
+        assert 'color' not in data._0.keys()
+        assert len(data._0.keys()) == 3
+        assert len(data) == 5
+        assert 'fruit' in data._0.keys()
+        assert data._0.fruit == 'Banana'
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, skip_rows=1)
+        assert 'color' not in data._0.keys()
+        assert len(data._0.keys()) == 3
+        assert len(data) == 5
+        assert 1 in data._0.keys()
+        assert data._0._1 == 'Banana'
+
+        with pytest.raises(ValueError):
+            data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, ignore='id')
+        with pytest.raises(ValueError):
+            data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, only='id')
+
+    def test_ignore_only(self, tmpdir):
+        self.create_csv(tmpdir, delimiter=',')
+
+        with pytest.raises(TypeError):
+            data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', ignore='id', only='name')
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', ignore='id')
+        assert 'id' not in data._0.keys()
+        
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', only='name')
+        assert 'color' not in data._0.keys()
+        assert len(data._0.keys()) == 1
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', ignore=['id', 'name'])
+        assert 'name' not in data._0.keys()
+        assert len(data._0.keys()) == 1
+
+    def test_skiprows_nrows(self, tmpdir):
+        self.create_csv(tmpdir, delimiter=',') 
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', nrows=3)
+        assert len(data) == 3
+        assert data._0.name == 'Banana'
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', skip_rows=1, nrows=3)
+        assert len(data) == 3
+        assert data._0.name == 'Apple'
+
+    def test_delimiter(self, tmpdir):
+        self.create_csv(tmpdir, delimiter='|') 
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', delimiter='|')
+        assert 0 in data.keys()
+        assert len(data.keys()) == 5
+        assert data._0.name == 'Banana'
+
+        self.create_csv(tmpdir, delimiter='\t') 
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', delimiter='\t')
+        assert 0 in data.keys()
+        assert len(data.keys()) == 5
+        assert data._0.name == 'Banana'
 
 
 class Test_Internal_Logic:
