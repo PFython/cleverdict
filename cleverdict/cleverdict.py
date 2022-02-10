@@ -8,7 +8,7 @@ from pathlib import Path
 from pprint import pprint
 from datetime import datetime
 import types
-from typing import Union
+from typing import Union, Iterable
 import inspect
 
 """
@@ -1186,6 +1186,63 @@ class CleverDict(dict):
             
         return cls(data)
 
+    def to_csv(
+        self, 
+        file_path: Path = None, 
+        ignore: Union[Iterable, str] = None, 
+        exclude: Union[Iterable, str] = None,
+        only: Union[Iterable, str] = None
+    ) -> None:
+        """[summary]
+
+        Args:
+            file_path (Path, optional): [description]. Defaults to None.
+            ignore (Union[Iterable, str], optional): [description]. Defaults to None.
+            exclude (Union[Iterable, str], optional): [description]. Defaults to None.
+            only (Union[Iterable, str], optional): [description]. Defaults to None.
+
+        Raises:
+            TypeError: [description]
+            TypeError: [description]
+
+        Returns:ye
+
+            [type]: [description]
+        """
+
+        # if file_path is None:
+        #     raise ValueError("File path not provided")
+
+        ignore, exclude = _preprocess_options(ignore, exclude, only)
+        mapping = self._filtered_mapping(ignore, only)
+
+        all_types = []
+        for k, v in mapping.items():
+            if isinstance(v, dict) or isinstance(v, CleverDict):
+                all_types.append(True)
+            else:
+                all_types.append(False)
+
+        same_type = True if all(i for i in all_types) else False
+
+        if same_type:
+            for _, v in mapping.items():
+                for _, val in v.items():
+                    if (hasattr(val, '__iter__') or hasattr(val, '__getitem__')) and not isinstance(val, str):
+                        raise ValueError("Values cannot contain iterables") 
+        else:
+            raise ValueError("Parent object should only contain CleverDict objects or dict objects to be converted to a CSV")
+
+        keys = []
+        for _, v in mapping.items():
+            if not keys:
+                keys.extend(list(v))
+            elif list(v) != keys:
+                raise ValueError('All subitems should have the same keys')
+            else:
+                continue
+        print("all good")
+        
     @classmethod
     def get_new_save_path(cls):
         """
