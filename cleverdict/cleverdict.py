@@ -385,6 +385,7 @@ class CleverDict(dict):
     ):
         ignore, only = _preprocess_options(ignore, exclude, only)
         self.setattr_direct("_aliases", AliasesDict())
+        self.check_if_unallowed_key(mapping, _aliases)
         if isinstance(mapping, CleverDict):
             # for key, alias in mapping._aliases.items():
             #     if key != alias:
@@ -413,8 +414,6 @@ class CleverDict(dict):
             if _aliases is not None and isinstance(_aliases, AliasesDict):
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
-            else:
-                raise RuntimeWarning("`_aliases` is an internal Attribute and can't be used")
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
 
@@ -489,15 +488,31 @@ class CleverDict(dict):
                       if obj not in self._aliases} & ignore | explicit_ignore
 
         mapping = self._filtered_mapping(ignore, only)
-        _aliases = {
+        _aliases = AliasesDict({
             k: v for k, v in self._aliases.items() if k not in self and v in mapping
-        }
+        })
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
     @property
     def _aliases_contains_internals(self):
         return any(obj in self._aliases for obj in self.ignore_internals)
+
+    def check_if_unallowed_key(self, mapping=None, _aliases=None):
+        contains_unallowed_key = False
+        if "_aliases" in mapping and not isinstance(mapping["_aliases"], AliasesDict):
+            contains_unallowed_key = True
+        if _aliases is not None and not isinstance(_aliases, AliasesDict):
+            contains_unallowed_key = True
+        try:
+            unallowed_pair = {obj[0]: obj[1] for obj in mapping if obj[0] == "_aliases"}
+        except TypeError:
+            pass
+        else:
+            if unallowed_pair:
+                contains_unallowed_key = True
+        if contains_unallowed_key:
+            raise RuntimeWarning("`_aliases` is an internal Attribute and can't be used")
 
     @property
     def _vars(self):
@@ -835,6 +850,8 @@ class CleverDict(dict):
         -------
         New CleverDict with keys from iterable and values equal to value.
         """
+        if any('_aliases' == obj for obj in iterable):
+            raise RuntimeWarning("`_aliases` is an internal Attribute and can't be used")
         ignore, only = _preprocess_options(ignore, exclude, only)
         if ignore:
             iterable = {k: value for k in iterable if k not in ignore}
@@ -1060,7 +1077,7 @@ class CleverDict(dict):
             mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
             _aliases = {k: v for k, v in data["_aliases"].items()}
             _vars = data["_vars"]
-            return cls(mapping, _aliases=_aliases, _vars=_vars, **kwargs)
+            return cls(mapping, _aliases=AliasesDict(_aliases), _vars=_vars, **kwargs)
         else:
             return cls(data, **kwargs)
 

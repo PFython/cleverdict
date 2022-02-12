@@ -1225,7 +1225,7 @@ class Test_README_examples:
         assert x._7 == "Seven"
         assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})"
         x.add_alias(7, "NumberSeven")
-        assert x.__aliases__ == {7: 7, "_7": 7, "NumberSeven": 7}
+        assert x._aliases == {7: 7, "_7": 7, "NumberSeven": 7}
         x.add_alias(7, "zeven")
         assert (
             repr(x)
