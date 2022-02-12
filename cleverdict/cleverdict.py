@@ -11,6 +11,8 @@ import types
 from typing import Union, Iterable, List
 import inspect
 
+from attr import field
+
 """
 Change log
 ==========
@@ -318,13 +320,6 @@ def _preprocess_csv(file_path: Union[str, Path], delimiter: str):
 
     return csv_data
 
-def _write_csv(file_path: Path, data: List[List]):
-
-        with open(file_path, 'w') as file:
-            writer = csv.writer(file)
-            writer.writerows(data)
-        
-        return True
 
 class Expand:
     def __init__(self, ok):
@@ -1180,7 +1175,7 @@ class CleverDict(dict):
 
         if not names:
             names = csv_data[0] if header else list(range(len(csv_data[0])))
-        print(names)
+        
         if len(names) != len(csv_data[0]):
                 raise ValueError("Number of items in names does not match the number of columns")
 
@@ -1222,45 +1217,26 @@ class CleverDict(dict):
             raise ValueError("File path not provided")
 
         ignore, only = _preprocess_options(ignore, exclude, only)
-
-        mapping = self._filtered_mapping(ignore, only)
-
-        all_types = []
-        for k, v in mapping.items():
-            if isinstance(v, dict) or isinstance(v, CleverDict):
-                all_types.append(True)
-            else:
-                all_types.append(False)
-
-        same_type = True if all(i for i in all_types) else False
-
+        mapping = self._filtered_mapping(ignore, None)
+        
+        all_types = [1 if isinstance(v, (dict, CleverDict)) else 0 for _, v in mapping.items()]
+        same_type = False if 0 in all_types else True
         if same_type:
             for _, v in mapping.items():
                 for _, val in v.items():
                     if (hasattr(val, '__iter__') or hasattr(val, '__getitem__')) and not isinstance(val, str):
                         raise ValueError("Values cannot contain iterables") 
         else:
-            raise ValueError("Parent object should only contain CleverDict objects or dict objects to be converted to a CSV")
+            raise ValueError("Parent object should only contain CleverDict objects for CSV conversion.")
 
-        keys = []
-        for _, v in mapping.items():
-            if not keys:
-                keys.extend(list(v))
-            elif list(v) != keys:
-                raise ValueError('All subitems should have the same keys')
-            else:
-                continue
-        
+        if any(v.keys() != mapping[0].keys() for _, v in mapping.items()):
+            raise ValueError("All subitems should have the same keys")
+
         data_list = []
-        if ignore:
-            data_list.append([i for i in keys if i not in ignore])
-        if only:
-            for i in keys:
-                data_list.append([i for i in keys if i in only.union(set(data_list[0]))])
 
-        for k, v in mapping.items():
-            data_list.append([v[key] for key in keys])
-
+        for _, v in mapping.items():
+            data_list.append(v._filtered_mapping(ignore, only))
+        
         written = _write_csv(file_path, data_list)
         return written
         
@@ -1435,3 +1411,13 @@ class CleverDict(dict):
             path = self.get_new_save_path().with_suffix(".json")
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
+
+
+def _write_csv(file_path: Path, data: List[CleverDict]):
+    """Write a list of CleverDict objects to a csv file"""
+    with open(file_path, 'w') as file:
+        writer = csv.DictWriter(file, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
+
+    return True
