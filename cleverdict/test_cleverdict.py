@@ -281,7 +281,7 @@ class Test_Misc:
             x.to_list(exclude=[], ignore=[])
             x.to_list(exclude=[], ignore=[], only=[])
         x.to_list(
-            ignore=CleverDict.ignore, exclude=CleverDict.ignore, only=CleverDict.ignore
+            ignore=CleverDict.ignore_internals, exclude=CleverDict.ignore_internals, only=CleverDict.ignore_internals
         )
 
         x = CleverDict({0: "Zero", 1: "One"})
@@ -674,6 +674,32 @@ class Test_Misc:
         assert list(y.keys()) == ["name"]
         y = CleverDict(x, exclude="name")
         assert list(y.keys()) == ["nationality"]
+
+    def test_internal_save_was_overwritten(self):
+        x = CleverDict()
+        x['save'] = "What a great save!"
+        assert x['save'] == "What a great save!"
+        assert repr(x) == "CleverDict({'save': 'What a great save!'}, _aliases={}, _vars={})"
+
+    def test_internal_delete_was_overwritten(self):
+        x = CleverDict()
+        x['delete'] = "Jon Doe deleted XYZ"
+        assert x['delete'] == "Jon Doe deleted XYZ"
+        assert repr(x) == "CleverDict({'delete': 'Jon Doe deleted XYZ'}, _aliases={}, _vars={})"
+
+    def test_ignore_internal_save_explicit(self):
+        x = CleverDict()
+        x['save'] = "What a great save!"
+        assert x['save'] == "What a great save!"
+        assert x.__repr__(ignore=['save']) == "CleverDict({}, _aliases={}, _vars={})"
+
+    def test_ignore_internal_explicit(self):
+        x = CleverDict()
+        x['save'] = "What a great save!"
+        x['delete'] = "Jon Doe deleted XYZ"
+        assert x['save'] == "What a great save!"
+        assert x['delete'] == "Jon Doe deleted XYZ"
+        assert x.__repr__(ignore=['delete']) == "CleverDict({'save': 'What a great save!'}, _aliases={}, _vars={})"
 
 
 class Test_Internal_Logic:

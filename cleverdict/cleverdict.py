@@ -280,9 +280,9 @@ def _preprocess_options(ignore, exclude, only):
             set(arg) if hasattr(arg, "__iter__") and not isinstance(arg, str) else {arg}
         )
 
-    if ignore == CleverDict.ignore:
+    if ignore == CleverDict.ignore_internals:
         ignore = None
-    if exclude == CleverDict.ignore:
+    if exclude == CleverDict.ignore_internals:
         exclude = None
 
     if sum(x is not None for x in (ignore, exclude, only)) > 1:
@@ -297,7 +297,7 @@ def _preprocess_options(ignore, exclude, only):
             else {only}
         )
 
-    return make_set(ignore) | make_set(exclude) | CleverDict.ignore, only
+    return make_set(ignore) | make_set(exclude) | CleverDict.ignore_internals, only
 
 
 class Expand:
@@ -361,7 +361,7 @@ class CleverDict(dict):
     original_delete = delete = delete
 
     # Always ignore these objects (incl. methods and non JSON serialisables)
-    ignore = {"_aliases", "save_path", "save", "delete"}
+    ignore_internals = {"_aliases", "save_path", "save", "delete"}
 
     # Used by .delete_alias:
     expand = True
@@ -472,7 +472,15 @@ class CleverDict(dict):
         only: iterable | str
             Only return output for specified keys
         """
+        explicit_ignore = ignore or set()
+        explicit_ignore = set(explicit_ignore)
         ignore, only = _preprocess_options(ignore, exclude, only)
+        # check if an alias was used with the same name as an internal one
+        # if so we include them if not explicit ignored
+        if self._aliases_contains_internals:
+            ignore = {obj for obj in self.ignore_internals
+                      if obj not in self._aliases} & ignore | explicit_ignore
+
         mapping = self._filtered_mapping(ignore, only)
         _aliases = {
             k: v for k, v in self._aliases.items() if k not in self and v in mapping
@@ -481,11 +489,15 @@ class CleverDict(dict):
         return f"{self.__class__.__name__}({repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
 
     @property
+    def _aliases_contains_internals(self):
+        return any(obj in self._aliases for obj in self.ignore_internals)
+
+    @property
     def _vars(self):
         """
         Returns a dict of any 'direct' attributes set with .setattr_direct()
         """
-        return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore}
+        return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore_internals}
 
     def get_key(self, name):
         """
@@ -734,7 +746,7 @@ class CleverDict(dict):
             value of the attribute
         """
         super().__setattr__(name, value)
-        if name not in CleverDict.ignore:
+        if name not in CleverDict.ignore_internals:
             self.save(name, value)
 
     def to_list(self, ignore=None, exclude=None, only=None):
