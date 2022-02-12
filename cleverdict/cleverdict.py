@@ -8,7 +8,7 @@ from pathlib import Path
 from pprint import pprint
 from datetime import datetime
 import types
-from typing import Union
+from typing import Union, Iterable, List
 import inspect
 
 """
@@ -317,6 +317,7 @@ def _preprocess_csv(file_path: Union[str, Path], delimiter: str):
         raise ValueError("File is empty")
 
     return csv_data
+
 
 class Expand:
     def __init__(self, ok):
@@ -1172,7 +1173,7 @@ class CleverDict(dict):
 
         if not names:
             names = csv_data[0] if header else list(range(len(csv_data[0])))
-        print(names)
+        
         if len(names) != len(csv_data[0]):
                 raise ValueError("Number of items in names does not match the number of columns")
 
@@ -1186,6 +1187,90 @@ class CleverDict(dict):
             
         return cls(data)
 
+    def to_csv(
+        self, 
+        file_path: Path = None, 
+        delimiter: str = ',',
+        ignore: Union[Iterable, str] = None, 
+        exclude: Union[Iterable, str] = None,
+        only: Union[Iterable, str] = None
+    ) -> None:
+        """Write a nested CleverDict object to a CSV file
+            Only CleverDicts consisting of CleverDicts can be written to a CSV file
+            The input object should have the same format as the output of from_csv
+
+        Parameters
+        ----------
+        file_path : Path | str
+            Path for the output csv file
+        delimiter: str, default ','
+            The delimiter to use in the csv file
+
+        ignore : Iterable | str, optional
+            Keys to ignore from the subitem CleverDicts
+
+        exclude : Iterable | str, optional
+            alias for ignore
+
+        only : Iterable | str, optional
+            Only include these keys in the output csv file
+
+        Returns
+        -------
+            Returns a pathlib.Path object containing the path to the output file.
+
+        Raises
+        ------
+        ValueError
+            - If the file path is not provided
+            - If the subitems contain different lengths or keys
+
+        TypeError
+            - If the underlying items are not CleverDicts
+            - If any of the values in the sub-items are iterables
+
+        Example
+        -------
+        >>> my_list = [
+        ...    {'id': ''.join(random.sample(string.ascii_lowercase, 6)), 
+        ...    'value': random.randint(10, 100)} 
+        for i in range(3)]
+        >>> c_dict = CleverDict({i: CleverDict(j) for i, j in enumerate(my_list)})
+        >>> print(c_dict)
+        CleverDict(
+            {
+                0: CleverDict({'id': 'argyso', 'value': 61}, _aliases={}, _vars={}), 
+                1: CleverDict({'id': 'xnsjcu', 'value': 70}, _aliases={}, _vars={}), 
+                2: CleverDict({'id': 'fabxvc', 'value': 91}, _aliases={}, _vars={})
+            }, _aliases={'_0': 0, '_False': 0, '_1': 1, '_True': 1, '_2': 2}, _vars={}
+        )
+        >>> c_dict.to_csv('my_csv.csv')
+        WindowsPath('C:/example/my_csv.csv')
+        """
+        
+        if file_path is None:
+            raise ValueError("File path not provided")
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+
+        ignore, only = _preprocess_options(ignore, exclude, only)
+        
+        if any(not isinstance(v, CleverDict) for _, v in self.items()):
+            raise TypeError("Parent object should only contain CleverDict objects for CSV conversion.")
+        
+        data_list = [v._filtered_mapping(ignore, only) for _, v in self.items()]
+
+        if any(v.keys() != self[0].keys() for _, v in self.items()):
+            raise ValueError("All subitems should have the same keys")
+
+        for i in data_list:
+            for _, val in i.items():
+                if (hasattr(val, '__iter__') or hasattr(val, '__getitem__')) and not isinstance(val, str):
+                    raise TypeError("Values to be written cannot be iterables")
+        
+        output_file = _write_csv(file_path, data_list, delimiter=delimiter)
+        return output_file
+        
     @classmethod
     def get_new_save_path(cls):
         """
@@ -1357,3 +1442,15 @@ class CleverDict(dict):
             path = self.get_new_save_path().with_suffix(".json")
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
+
+
+def _write_csv(file_path: Path, data: List[CleverDict], delimiter: str):
+    """Write a list of CleverDict objects to a csv file"""
+    with open(file_path, 'w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=data[0].keys(), delimiter=delimiter)
+        writer.writeheader()
+        writer.writerows(data)
+
+    if file_path.exists():
+        return file_path.absolute()
+    return None
