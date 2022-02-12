@@ -11,9 +11,6 @@ import types
 from typing import Union, Iterable, List
 import inspect
 
-from attr import field
-from isort import file
-
 """
 Change log
 ==========
@@ -1193,6 +1190,7 @@ class CleverDict(dict):
     def to_csv(
         self, 
         file_path: Path = None, 
+        delimiter: str = ',',
         ignore: Union[Iterable, str] = None, 
         exclude: Union[Iterable, str] = None,
         only: Union[Iterable, str] = None
@@ -1205,6 +1203,8 @@ class CleverDict(dict):
         ----------
         file_path : Path | str
             Path for the output csv file
+        delimiter: str, default ','
+            The delimiter to use in the csv file
 
         ignore : Iterable | str, optional
             Keys to ignore from the subitem CleverDicts
@@ -1268,7 +1268,7 @@ class CleverDict(dict):
                 if (hasattr(val, '__iter__') or hasattr(val, '__getitem__')) and not isinstance(val, str):
                     raise TypeError("Values to be written cannot be iterables")
         
-        output_file = _write_csv(file_path, data_list)
+        output_file = _write_csv(file_path, data_list, delimiter=delimiter)
         return output_file
         
     @classmethod
@@ -1444,10 +1444,10 @@ class CleverDict(dict):
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
 
 
-def _write_csv(file_path: Path, data: List[CleverDict]):
+def _write_csv(file_path: Path, data: List[CleverDict], delimiter: str):
     """Write a list of CleverDict objects to a csv file"""
-    with open(file_path, 'w') as file:
-        writer = csv.DictWriter(file, fieldnames=data[0].keys())
+    with open(file_path, 'w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=data[0].keys(), delimiter=delimiter)
         writer.writeheader()
         writer.writerows(data)
 
