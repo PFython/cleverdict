@@ -8,7 +8,7 @@ from pathlib import Path
 from pprint import pprint
 from datetime import datetime
 import types
-from typing import Union, Iterable
+from typing import Union, Iterable, List
 import inspect
 
 """
@@ -317,6 +317,14 @@ def _preprocess_csv(file_path: Union[str, Path], delimiter: str):
         raise ValueError("File is empty")
 
     return csv_data
+
+def _write_csv(file_path: Path, data: List[List]):
+
+        with open(file_path, 'w') as file:
+            writer = csv.writer(file)
+            writer.writerows(data)
+        
+        return True
 
 class Expand:
     def __init__(self, ok):
@@ -1210,10 +1218,11 @@ class CleverDict(dict):
             [type]: [description]
         """
 
-        # if file_path is None:
-        #     raise ValueError("File path not provided")
+        if file_path is None:
+            raise ValueError("File path not provided")
 
-        ignore, exclude = _preprocess_options(ignore, exclude, only)
+        ignore, only = _preprocess_options(ignore, exclude, only)
+
         mapping = self._filtered_mapping(ignore, only)
 
         all_types = []
@@ -1241,7 +1250,19 @@ class CleverDict(dict):
                 raise ValueError('All subitems should have the same keys')
             else:
                 continue
-        print("all good")
+        
+        data_list = []
+        if ignore:
+            data_list.append([i for i in keys if i not in ignore])
+        if only:
+            for i in keys:
+                data_list.append([i for i in keys if i in only.union(set(data_list[0]))])
+
+        for k, v in mapping.items():
+            data_list.append([v[key] for key in keys])
+
+        written = _write_csv(file_path, data_list)
+        return written
         
     @classmethod
     def get_new_save_path(cls):
