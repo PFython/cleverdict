@@ -104,6 +104,20 @@ class Test_Initialisation:
         assert x._2 == "two"
         assert x._3 == "three"
 
+    def test_create_with_alias_as_key_name_is_not_possible_and_raises_a_runtime_warning(self):
+        data = {"total": 6, "usergroup": "Knights of Ni", "_aliases": ["Kn8 of Ni", 'Knights Who Say "Ni!"']}
+        with pytest.raises(RuntimeWarning):
+            CleverDict(data)
+
+        with pytest.raises(RuntimeWarning):
+             CleverDict(**data)
+
+        with pytest.raises(RuntimeWarning):
+            CleverDict(data.items())
+
+        with pytest.raises(RuntimeWarning):
+            CleverDict().fromkeys(["total", "usergroup", "_aliases"], "val")
+
 
 class Test_Core_Features:
     def test_tolist(self):
@@ -1211,7 +1225,7 @@ class Test_README_examples:
         assert x._7 == "Seven"
         assert repr(x) == "CleverDict({7: 'Seven'}, _aliases={'_7': 7}, _vars={})"
         x.add_alias(7, "NumberSeven")
-        assert x._aliases == {7: 7, "_7": 7, "NumberSeven": 7}
+        assert x.__aliases__ == {7: 7, "_7": 7, "NumberSeven": 7}
         x.add_alias(7, "zeven")
         assert (
             repr(x)

@@ -3,6 +3,7 @@ import json
 import inspect
 import keyword
 import itertools
+from collections import UserDict
 from pathlib import Path
 from pprint import pprint
 from datetime import datetime
@@ -322,6 +323,10 @@ class Expand:
         CleverDict.expand = self.save_expand
 
 
+class AliasesDict(UserDict):
+    pass
+
+
 class CleverDict(dict):
     """
     A data structure which allows both object attributes and dictionary
@@ -379,7 +384,7 @@ class CleverDict(dict):
         **kwargs,
     ):
         ignore, only = _preprocess_options(ignore, exclude, only)
-        self.setattr_direct("_aliases", {})
+        self.setattr_direct("_aliases", AliasesDict())
         if isinstance(mapping, CleverDict):
             # for key, alias in mapping._aliases.items():
             #     if key != alias:
@@ -405,9 +410,11 @@ class CleverDict(dict):
                 if isinstance(mapping, list):
                     mapping = {k: v for k, v in mapping if k in only}
             self.update(mapping, **kwargs)
-            if _aliases is not None:
+            if _aliases is not None and isinstance(_aliases, AliasesDict):
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
+            else:
+                raise RuntimeWarning("`_aliases` is an internal Attribute and can't be used")
             for k, v in _vars.items():
                 self.setattr_direct(k, v)
 
