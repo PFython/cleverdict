@@ -411,7 +411,7 @@ class CleverDict(dict):
                 if isinstance(mapping, list):
                     mapping = {k: v for k, v in mapping if k in only}
             self.update(mapping, **kwargs)
-            if _aliases is not None and isinstance(_aliases, AliasesDict):
+            if _aliases is not None and isinstance(_aliases, (AliasesDict, dict)):
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
             for k, v in _vars.items():
@@ -500,9 +500,9 @@ class CleverDict(dict):
 
     def check_if_unallowed_key(self, mapping=None, _aliases=None):
         contains_unallowed_key = False
-        if "_aliases" in mapping and not isinstance(mapping["_aliases"], AliasesDict):
+        if "_aliases" in mapping and not isinstance(mapping["_aliases"], (AliasesDict, dict)):
             contains_unallowed_key = True
-        if _aliases is not None and not isinstance(_aliases, AliasesDict):
+        if _aliases is not None and not isinstance(_aliases, (AliasesDict, dict)):
             contains_unallowed_key = True
         try:
             unallowed_pair = {obj[0]: obj[1] for obj in mapping if obj[0] == "_aliases"}
