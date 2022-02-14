@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest keyring
+          pip install pytest keyring keyrings.alt
       - name: Test with pytest
         run: |
           pytest ./cleverdict/test_cleverdict.py
