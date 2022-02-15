@@ -3,6 +3,7 @@ import json
 import inspect
 import keyword
 import itertools
+from collections import UserDict
 from pathlib import Path
 from pprint import pprint
 from datetime import datetime
@@ -280,9 +281,9 @@ def _preprocess_options(ignore, exclude, only):
             set(arg) if hasattr(arg, "__iter__") and not isinstance(arg, str) else {arg}
         )
 
-    if ignore == CleverDict.ignore:
+    if ignore == CleverDict.ignore_internals:
         ignore = None
-    if exclude == CleverDict.ignore:
+    if exclude == CleverDict.ignore_internals:
         exclude = None
 
     if sum(x is not None for x in (ignore, exclude, only)) > 1:
@@ -297,7 +298,7 @@ def _preprocess_options(ignore, exclude, only):
             else {only}
         )
 
-    return make_set(ignore) | make_set(exclude) | CleverDict.ignore, only
+    return make_set(ignore) | make_set(exclude) | CleverDict.ignore_internals, only
 
 
 class Expand:
@@ -320,6 +321,10 @@ class Expand:
 
     def __exit__(self, *args):
         CleverDict.expand = self.save_expand
+
+
+class AliasesDict(UserDict):
+    pass
 
 
 class CleverDict(dict):
@@ -361,7 +366,7 @@ class CleverDict(dict):
     original_delete = delete = delete
 
     # Always ignore these objects (incl. methods and non JSON serialisables)
-    ignore = {"_aliases", "save_path", "save", "delete"}
+    ignore_internals = {"_aliases", "save_path", "save", "delete"}
 
     # Used by .delete_alias:
     expand = True
@@ -379,7 +384,8 @@ class CleverDict(dict):
         **kwargs,
     ):
         ignore, only = _preprocess_options(ignore, exclude, only)
-        self.setattr_direct("_aliases", {})
+        self.setattr_direct("_aliases", AliasesDict())
+        self.check_if_unallowed_key(mapping, _aliases)
         if isinstance(mapping, CleverDict):
             # for key, alias in mapping._aliases.items():
             #     if key != alias:
@@ -405,7 +411,7 @@ class CleverDict(dict):
                 if isinstance(mapping, list):
                     mapping = {k: v for k, v in mapping if k in only}
             self.update(mapping, **kwargs)
-            if _aliases is not None:
+            if _aliases is not None and isinstance(_aliases, (AliasesDict, dict)):
                 for k, v in _aliases.items():
                     self._add_alias(v, k)
             for k, v in _vars.items():
@@ -472,20 +478,48 @@ class CleverDict(dict):
         only: iterable | str
             Only return output for specified keys
         """
+        explicit_ignore = ignore or set()
+        explicit_ignore = set(explicit_ignore)
         ignore, only = _preprocess_options(ignore, exclude, only)
+        # check if an alias was used with the same name as an internal one
+        # if so we include them if not explicit ignored
+        if self._aliases_contains_internals:
+            ignore = {obj for obj in self.ignore_internals
+                      if obj not in self._aliases} & ignore | explicit_ignore
+
         mapping = self._filtered_mapping(ignore, only)
-        _aliases = {
+        _aliases = AliasesDict({
             k: v for k, v in self._aliases.items() if k not in self and v in mapping
-        }
+        })
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
         return f"{self.__class__.__name__}({repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+
+    @property
+    def _aliases_contains_internals(self):
+        return any(obj in self._aliases for obj in self.ignore_internals)
+
+    def check_if_unallowed_key(self, mapping=None, _aliases=None):
+        contains_unallowed_key = False
+        if "_aliases" in mapping and not isinstance(mapping["_aliases"], (AliasesDict, dict)):
+            contains_unallowed_key = True
+        if _aliases is not None and not isinstance(_aliases, (AliasesDict, dict)):
+            contains_unallowed_key = True
+        try:
+            unallowed_pair = {obj[0]: obj[1] for obj in mapping if obj[0] == "_aliases"}
+        except TypeError:
+            pass
+        else:
+            if unallowed_pair:
+                contains_unallowed_key = True
+        if contains_unallowed_key:
+            raise RuntimeWarning("`_aliases` is an internal Attribute and can't be used")
 
     @property
     def _vars(self):
         """
         Returns a dict of any 'direct' attributes set with .setattr_direct()
         """
-        return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore}
+        return {k: v for k, v in vars(self).items() if k not in CleverDict.ignore_internals}
 
     def get_key(self, name):
         """
@@ -734,7 +768,7 @@ class CleverDict(dict):
             value of the attribute
         """
         super().__setattr__(name, value)
-        if name not in CleverDict.ignore:
+        if name not in CleverDict.ignore_internals:
             self.save(name, value)
 
     def to_list(self, ignore=None, exclude=None, only=None):
@@ -816,6 +850,8 @@ class CleverDict(dict):
         -------
         New CleverDict with keys from iterable and values equal to value.
         """
+        if any('_aliases' == obj for obj in iterable):
+            raise RuntimeWarning("`_aliases` is an internal Attribute and can't be used")
         ignore, only = _preprocess_options(ignore, exclude, only)
         if ignore:
             iterable = {k: value for k in iterable if k not in ignore}
@@ -1041,7 +1077,7 @@ class CleverDict(dict):
             mapping = {eval(k): v for k, v in data["_mapping_encoded"].items()}
             _aliases = {k: v for k, v in data["_aliases"].items()}
             _vars = data["_vars"]
-            return cls(mapping, _aliases=_aliases, _vars=_vars, **kwargs)
+            return cls(mapping, _aliases=AliasesDict(_aliases), _vars=_vars, **kwargs)
         else:
             return cls(data, **kwargs)
 
