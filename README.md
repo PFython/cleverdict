@@ -15,17 +15,17 @@
 
 ## >CONTENTS
 
-1. [OVERVIEW](#1.-OVERVIEW)
-2. [INSTALLATION](#2.-INSTALLATION)
-3. [IMPORTING INTO CLEVERDICT](#3.-IMPORTING-TO-CLEVERDICT)
-4. [EXPORTING FROM CLEVERICT](#4.-EXPORTING-FROM-CLEVERICT)
-5. [ATTRIBUTE NAMES AND ALIASES](#5.-ATTRIBUTE-NAMES-AND-ALIASES)
-6. [DEEPER DIVE INTO ATTRIBUTE NAMES](#6.-DEEPER-DIVE-INTO-ATTRIBUTE-NAMES)
-7. [SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM](#7.-SETTING-AN-ATTRIBUTE-WITHOUT-CREATING-A-DICTIONARY-ITEM)
-8. [THE AUTO-SAVE FEATURE](#8.-THE-AUTO-SAVE-FEATURE)
-9. [CREATING YOUR OWN AUTO-SAVE FUNCTION](#9.-CREATING-YOUR-OWN-AUTO-SAVE-FUNCTION)
-10. [CONTRIBUTING](#10.-CONTRIBUTING)
-11. [CREDITS](#11.-CREDITS)
+1. [OVERVIEW](#1-overview)
+2. [INSTALLATION](#2-installation)
+3. [IMPORTING INTO CLEVERDICT](#3-importing-to-cleverdict)
+4. [EXPORTING FROM CLEVERDICT](#4-exporting-from-cleverdict)
+5. [ATTRIBUTE NAMES AND ALIASES](#5-attribute-names-and-aliases)
+6. [DEEPER DIVE INTO ATTRIBUTE NAMES](#6-deeper-dive-into-attribute-names)
+7. [SETTING AN ATTRIBUTE WITHOUT CREATING A DICTIONARY ITEM](#7-setting-an-attribute-without-creating-a-dictionary-item)
+8. [THE AUTO-SAVE FEATURE](#8-the-auto-save-feature)
+9. [CREATING YOUR OWN AUTO-SAVE FUNCTION](#9-creating-your-own-auto-save-function)
+10. [CONTRIBUTING](#10-contributing)
+11. [CREDITS](#11-credits)
 
 
 ## 1. OVERVIEW
@@ -422,7 +422,7 @@ To disable autosaving/autodeletion  just enter:
 To deactivate `.save()` or `.delete()` separately:
 
     >>> x.set_autosave()
-    >>> x.set_deleve()
+    >>> x.set_autodelete()
 
 > If you want to periodically open the `CleverDict` save folder to check for orphaned `.json` files from time to time, a handy shortcut is:
 
