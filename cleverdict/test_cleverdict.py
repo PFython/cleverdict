@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 from cleverdict import CleverDict, Expand, all_aliases
 import pytest
 import os
@@ -7,6 +8,8 @@ import json
 from pathlib import Path
 import keyring
 from itertools import permutations
+
+import cleverdict
 
 
 def example_save_function(self, name=None, value=None):
@@ -348,7 +351,7 @@ class Test_Misc:
             perms = ["".join(list(x)).replace("=", "=['Yes'],") for x in perms]
             for args in perms:
                 with pytest.raises(TypeError):
-                    eval("x." + func.replace("(", "(" + args))
+                    eval("x." + func.replace("(", "(" + args))        
 
     def test_filters_with_init(self):
         """
@@ -714,6 +717,178 @@ class Test_Misc:
         assert x['save'] == "What a great save!"
         assert x['delete'] == "Jon Doe deleted XYZ"
         assert x.__repr__(ignore=['delete']) == "CleverDict({'save': 'What a great save!'}, _aliases={}, _vars={})"
+
+
+class Test_From_CSV:
+    def create_csv(self, tmpdir, delimiter):
+        data = [
+                ['id', 'name', 'color'],
+                [1, 'Banana', 'yellow'],
+                [2, 'Apple', 'green'],
+                [3, 'Blueberry', 'blue'],
+                [4, 'Kinnow', 'orange'],
+                [5, 'Kiwi', 'brown']
+            ]
+        with open(f'{tmpdir}/test_csv.csv', 'w') as f:
+            f.write('\n'.join(delimiter.join(str(k) for k in i) for i in data))
+
+    def test_missing_file(self):
+        """Creates a csv file from data and tests the output"""
+
+        with pytest.raises(ValueError):
+            CleverDict.from_csv()
+        with pytest.raises(ValueError):
+            CleverDict.from_csv('test_csv.csv')
+
+    def test_header_names(self, tmpdir):
+        self.create_csv(tmpdir, delimiter=',')
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv')
+        assert 0 in data.keys()
+        assert len(data.keys()) == 5
+        assert data._0.name == 'Banana'
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, skip_rows=1, names=['sl', 'fruit', 'appearance'])
+        assert 'color' not in data._0.keys()
+        assert len(data._0.keys()) == 3
+        assert len(data) == 5
+        assert 'fruit' in data._0.keys()
+        assert data._0.fruit == 'Banana'
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, skip_rows=1)
+        assert 'color' not in data._0.keys()
+        assert len(data._0.keys()) == 3
+        assert len(data) == 5
+        assert 1 in data._0.keys()
+        assert data._0._1 == 'Banana'
+
+        with pytest.raises(ValueError):
+            data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, ignore='id')
+        with pytest.raises(ValueError):
+            data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', header=False, only='id')
+
+    def test_ignore_only(self, tmpdir):
+        self.create_csv(tmpdir, delimiter=',')
+
+        with pytest.raises(TypeError):
+            data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', ignore='id', only='name')
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', ignore='id')
+        assert 'id' not in data._0.keys()
+        
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', only='name')
+        assert 'color' not in data._0.keys()
+        assert len(data._0.keys()) == 1
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', ignore=['id', 'name'])
+        assert 'name' not in data._0.keys()
+        assert len(data._0.keys()) == 1
+
+    def test_skiprows_nrows(self, tmpdir):
+        self.create_csv(tmpdir, delimiter=',') 
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', nrows=3)
+        assert len(data) == 3
+        assert data._0.name == 'Banana'
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', skip_rows=1, nrows=3)
+        assert len(data) == 3
+        assert data._0.name == 'Apple'
+
+    def test_delimiter(self, tmpdir):
+        self.create_csv(tmpdir, delimiter='|') 
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', delimiter='|')
+        assert 0 in data.keys()
+        assert len(data.keys()) == 5
+        assert data._0.name == 'Banana'
+
+        self.create_csv(tmpdir, delimiter='\t') 
+
+        data = CleverDict.from_csv(f'{tmpdir}/test_csv.csv', delimiter='\t')
+        assert 0 in data.keys()
+        assert len(data.keys()) == 5
+        assert data._0.name == 'Banana'
+
+
+class Test_To_CSV:
+    def create_data(self):
+        keys = ['id', 'name', 'color']
+        data = [
+            [1, 'Banana', 'yellow'],
+            [2, 'Apple', 'green'],
+            [3, 'Blueberry', 'blue'],
+            [4, 'Kinnow', 'orange'],
+            [5, 'Kiwi', 'brown']
+        ]
+        data_list = [CleverDict(zip(keys, i)) for i in data]
+        c_dict = CleverDict({i: v for i, v in enumerate(data_list)})
+        return c_dict
+
+    def test_invalid_params(self, tmpdir):
+        c_dict = self.create_data()
+        with pytest.raises(ValueError):
+            c_dict.to_csv()
+        with pytest.raises(TypeError):
+            c_dict.to_csv(f'{tmpdir}/test.csv', exclude='name', only='id')
+
+    def test_bad_dicts(self, tmpdir):
+        c_dict = self.create_data()
+        c_dict._0.name2 = 'temp'
+        with pytest.raises(ValueError):
+            c_dict.to_csv(f'{tmpdir}/test.csv')
+
+        c_dict = self.create_data()
+        c_dict[6] = CleverDict([('key1', 'temp'), ('key2', 'temp')])
+        with pytest.raises(ValueError):
+            c_dict.to_csv(f'{tmpdir}/test.csv')
+
+        c_dict = self.create_data()
+        c_dict[6] = dict(key1='temp', key2='temp')
+        with pytest.raises(TypeError):
+            c_dict.to_csv(f'{tmpdir}/test.csv')
+
+        c_dict = self.create_data()
+        c_dict._1.color = ['green', 'red']
+        with pytest.raises(TypeError):
+            c_dict.to_csv(f'{tmpdir}/test.csv')
+
+    def test_file_creation(self, tmpdir):
+        c_dict = self.create_data()
+        file_path = c_dict.to_csv(f'{tmpdir}/test1.csv')
+        assert file_path.exists()
+        assert file_path.suffix == '.csv'
+        assert file_path.name == 'test1.csv'
+
+    def test_written_file(self, tmpdir):
+        c_dict = self.create_data()
+        file_path = c_dict.to_csv(f'{tmpdir}/test2.csv')
+        data = CleverDict.from_csv(file_path)
+        assert data._0.name == 'Banana'
+        assert len(data.keys()) == 5
+
+    def test_delimiter(self, tmpdir):
+        c_dict = self.create_data()
+        delimiter = '|'
+        file_path = c_dict.to_csv(f'{tmpdir}/test3.csv', delimiter=delimiter)
+        data = CleverDict.from_csv(file_path, delimiter=delimiter)
+        assert data._0.name == 'Banana'
+        assert len(data._0.keys()) == 3
+        assert len(data.keys()) == 5
+
+    def test_ignore_only(self, tmpdir):
+        c_dict = self.create_data()
+        file_path = c_dict.to_csv(f'{tmpdir}/test4.csv', ignore='id')
+        data = CleverDict.from_csv(file_path)
+        assert 'id' not in data._0
+        assert data._1.name == 'Apple'
+        assert list(data._1) == ['name', 'color']
+
+        file_path = c_dict.to_csv(f'{tmpdir}/test5.csv', only='id')
+        data = CleverDict.from_csv(file_path)
+        assert 'id' in data._0
+        assert 'color' not in data._0
+        assert data._1.id == '2'
+        assert list(data._1) == ['id']
 
 
 class Test_Internal_Logic:
