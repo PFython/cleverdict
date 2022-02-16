@@ -1,15 +1,16 @@
+from __future__ import annotations
+
 import csv
-import os
-import json
 import inspect
-import keyword
 import itertools
+import json
+import keyword
+import os
+import types
+from datetime import datetime
 from pathlib import Path
 from pprint import pprint
-from datetime import datetime
-import types
-from typing import Union, Iterable, List
-import inspect
+from typing import Iterable, List, Union
 
 """
 Change log
@@ -309,7 +310,7 @@ def _preprocess_csv(file_path: Union[str, Path], delimiter: str):
         file_path = Path(file_path)
     if not file_path.exists():
         raise ValueError("File not found")
-        
+
     with open(file_path, "r", encoding="utf-8") as file:
         reader = csv.reader(file, delimiter=delimiter)
         csv_data = list(reader)
@@ -317,6 +318,18 @@ def _preprocess_csv(file_path: Union[str, Path], delimiter: str):
         raise ValueError("File is empty")
 
     return csv_data
+
+
+def _write_csv(file_path: Path, data: List[CleverDict], delimiter: str) -> Union[Path, None]:
+    """Write a list of CleverDict objects to a csv file"""
+    with open(file_path, 'w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=data[0].keys(), delimiter=delimiter)
+        writer.writeheader()
+        writer.writerows(data)
+
+    if file_path.exists():
+        return file_path.absolute()
+    return None
 
 
 class Expand:
@@ -1064,28 +1077,27 @@ class CleverDict(dict):
         else:
             return cls(data, **kwargs)
 
-
     @classmethod
     def from_csv(
         cls,
-        file_path: Union[Path, str] = None, 
+        file_path: Union[Path, str] = None,
         skip_rows: int = None,
         nrows: int = None,
-        header: bool = True, 
-        names: list = [], 
+        header: bool = True,
+        names: list = [],
         delimiter: str = ',',
         ignore: Union[str, list] = None,
         exclude: Union[str, list] = None,
         only: Union[str, list] = None
-    ) -> dict:
-        """Creates a new CleverDict object from a CSV file. 
+    ) -> CleverDict:
+        """Creates a new CleverDict object from a CSV file.
             Each row is also encoded as a CleverDict object with the key being the row number starting from zero
 
         Parameters:
         -----------
         file_path: str | pathlib.Path
             The path to the csv file
-        
+
         skip_rows: int
             Number of rows to skip from the beginning of the file
             Does not count the header if header is True
@@ -1120,9 +1132,9 @@ class CleverDict(dict):
 
         Raises:
         -------
-        TypeError: 
+        TypeError:
             If more than one of ignore, exclude, and only are specified
-        
+
         ValueError:
             - If file path is not provided or is invalid
             - If names are specified without headers=False
@@ -1142,7 +1154,7 @@ class CleverDict(dict):
         >>> print(data)
         CleverDict(
             {
-                0: CleverDict({'id': '1', 'name': 'Banana', 'color': 'yellow'}, _aliases={}, _vars={}), 
+                0: CleverDict({'id': '1', 'name': 'Banana', 'color': 'yellow'}, _aliases={}, _vars={}),
                 1: CleverDict({'id': '2', 'name': 'Apple', 'color': 'green'}, _aliases={}, _vars={})
             }, _aliases={'_0': 0, '_False': 0, '_1': 1, '_True': 1}, _vars={}
         )
@@ -1162,20 +1174,21 @@ class CleverDict(dict):
             start_row = 1 if header else 0
         else:
             start_row = skip_rows + (1 if header else 0)
-        
+
         if nrows is None:
             end_row = None
         else:
             end_row = start_row + nrows
 
         if header and names:
-            raise ValueError("Names cannot be specified if header is True.\nHint: To specify custom names for CSV with headers, set header=False and skip_rows=1")
+            raise ValueError("Names cannot be specified if header is True.\n"
+                             "Hint: To specify custom names for CSV with headers, set header=False and skip_rows=1")
 
         if not names:
             names = csv_data[0] if header else list(range(len(csv_data[0])))
-        
+
         if len(names) != len(csv_data[0]):
-                raise ValueError("Number of items in names does not match the number of columns")
+            raise ValueError("Number of items in names does not match the number of columns")
 
         if len(names) != len(set(names)):
             raise ValueError("Names contain one or more duplicate values")
@@ -1184,17 +1197,17 @@ class CleverDict(dict):
         for idx, row in enumerate(csv_data[start_row:end_row]):
             current_row_dict = cls(dict(zip(names, row)), **kwargs)
             data[idx] = current_row_dict
-            
+
         return cls(data)
 
     def to_csv(
-        self, 
-        file_path: Path = None, 
+        self,
+        file_path: Path = None,
         delimiter: str = ',',
-        ignore: Union[Iterable, str] = None, 
+        ignore: Union[Iterable, str] = None,
         exclude: Union[Iterable, str] = None,
         only: Union[Iterable, str] = None
-    ) -> None:
+    ) -> Union[Path, None]:
         """Write a nested CleverDict object to a CSV file
             Only CleverDicts consisting of CleverDicts can be written to a CSV file
             The input object should have the same format as the output of from_csv
@@ -1232,32 +1245,32 @@ class CleverDict(dict):
         Example
         -------
         >>> my_list = [
-        ...    {'id': ''.join(random.sample(string.ascii_lowercase, 6)), 
-        ...    'value': random.randint(10, 100)} 
+        ...    {'id': ''.join(random.sample(string.ascii_lowercase, 6)),
+        ...    'value': random.randint(10, 100)}
         for i in range(3)]
         >>> c_dict = CleverDict({i: CleverDict(j) for i, j in enumerate(my_list)})
         >>> print(c_dict)
         CleverDict(
             {
-                0: CleverDict({'id': 'argyso', 'value': 61}, _aliases={}, _vars={}), 
-                1: CleverDict({'id': 'xnsjcu', 'value': 70}, _aliases={}, _vars={}), 
+                0: CleverDict({'id': 'argyso', 'value': 61}, _aliases={}, _vars={}),
+                1: CleverDict({'id': 'xnsjcu', 'value': 70}, _aliases={}, _vars={}),
                 2: CleverDict({'id': 'fabxvc', 'value': 91}, _aliases={}, _vars={})
             }, _aliases={'_0': 0, '_False': 0, '_1': 1, '_True': 1, '_2': 2}, _vars={}
         )
         >>> c_dict.to_csv('my_csv.csv')
         WindowsPath('C:/example/my_csv.csv')
         """
-        
+
         if file_path is None:
             raise ValueError("File path not provided")
         if isinstance(file_path, str):
             file_path = Path(file_path)
 
         ignore, only = _preprocess_options(ignore, exclude, only)
-        
+
         if any(not isinstance(v, CleverDict) for _, v in self.items()):
             raise TypeError("Parent object should only contain CleverDict objects for CSV conversion.")
-        
+
         data_list = [v._filtered_mapping(ignore, only) for _, v in self.items()]
 
         if any(v.keys() != self[0].keys() for _, v in self.items()):
@@ -1267,10 +1280,10 @@ class CleverDict(dict):
             for _, val in i.items():
                 if (hasattr(val, '__iter__') or hasattr(val, '__getitem__')) and not isinstance(val, str):
                     raise TypeError("Values to be written cannot be iterables")
-        
+
         output_file = _write_csv(file_path, data_list, delimiter=delimiter)
         return output_file
-        
+
     @classmethod
     def get_new_save_path(cls):
         """
@@ -1442,15 +1455,3 @@ class CleverDict(dict):
             path = self.get_new_save_path().with_suffix(".json")
             self.setattr_direct("save_path", Path(path))
         self.to_json(file_path=self.save_path, fullcopy=fullcopy)
-
-
-def _write_csv(file_path: Path, data: List[CleverDict], delimiter: str):
-    """Write a list of CleverDict objects to a csv file"""
-    with open(file_path, 'w', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=data[0].keys(), delimiter=delimiter)
-        writer.writeheader()
-        writer.writerows(data)
-
-    if file_path.exists():
-        return file_path.absolute()
-    return None
