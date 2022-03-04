@@ -11,7 +11,7 @@
     <a href="https://twitter.com/@appawsom" title="Follow us on Twitter"><img src="https://img.shields.io/twitter/follow/appawsom.svg?style=social&label=Follow"></a>
 </p>
 
-![cleverdict cartoon](https://raw.githubusercontent.com/PFython/cleverdict/master/cleverdict%20cartoon.png)
+![cleverdict cartoon](https://raw.githubusercontent.com/PFython/cleverdict/master/resources/cleverdict%20cartoon.png)
 
 ## >CONTENTS
 
@@ -214,7 +214,7 @@ Although primarily intended for numerical indexing, you can also use *strings* w
 
 > NB:  Like regular dictionaries from Python 3.6 onwards, `CleverDict`,  stores values **in the order you create them**.  By default though `pprint` will helpfully (!) **sort** the keys, so don't panic if they seem out of order... Just use `repr()` to confirm the actual order, or `.info()` which is explained more fully in Section 6.
 
-![Keep Calm](https://raw.githubusercontent.com/PFython/cleverdict/master/keep_calm_use_info.png)
+![Keep Calm](https://raw.githubusercontent.com/PFython/cleverdict/master/resources/keep_calm_use_info.png)
 
 If you want to *only* include particular keys in the output of `.to_json()`, `.to_list()`, `.to_dict`, `.to_lines()`, `.info()` and even `__repr__()`, you can use the `only=` argument followed by a list of attribute/key names:
 
@@ -525,5 +525,3 @@ https://github.com/PFython/cleverdict/issues?q=is%3Aopen+is%3Aissue
 If you find `cleverdict` helpful, please feel free to:
 
 <a href="https://www.buymeacoffee.com/pfython" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" alt="Buy Me A Coffee" width="217px" ></a>
-
-
