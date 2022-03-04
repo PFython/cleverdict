@@ -106,7 +106,7 @@ Or use an existing `CleverDict` object as input:
 
 > *(\*) See Sections 5 and 7 to understand `_aliases={}` and `_vars={}` shown in the output above...*
 
-A really nice feature is the ability to import JSON strings or files using `.from_json()` `:
+A really nice feature is the ability to import JSON strings or files using `.from_json()` (try with `resources/mydata.json`):
 
     >>> json_data = '{"None": null}'
     >>> x = CleverDict.from_json(json_data)
