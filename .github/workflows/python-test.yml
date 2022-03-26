@@ -8,6 +8,26 @@ on:
       - master
 
 jobs:
+   lint:
+     runs-on: ubuntu-latest
+     steps:
+       - uses: actions/checkout@v2
+       - uses: actions/setup-python@v2
+         with:
+           python-version: '3.9'
+       - name: Install dependencies
+         run: |
+           pip install -U pip
+           pip install flake8 black isort
+       - name: Run flake8
+         run: |
+           flake8 .
+       - name: Run black
+         run: |
+           black . --check --diff
+       - name: Run isort
+         run: |
+           isort . --check --diff
    test:
      runs-on: ubuntu-latest
      steps:
@@ -18,17 +38,7 @@ jobs:
        - name: Install dependencies
          run: |
            pip install -U pip
-           pip install pytest # flake8 black isort
-           # pip install -e ".[dev]"
+           pip install pytest
        - name: Run pytest
          run: |
            pytest
-       # - name: Run flake8
-       #   run: |
-       #     flake8 .
-       # - name: Run black
-       #   run: |
-       #     black . --diff
-       # - name: Run isort
-       #   run: |
-       #     isort .
