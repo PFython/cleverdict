@@ -477,8 +477,10 @@ class CleverDict(dict):
             {k: v for k, v in self._aliases.items() if k not in self and v in mapping}
         )
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
-        return (f"{self.__class__.__name__}("
-                f"{repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})")
+        return (
+            f"{self.__class__.__name__}("
+            f"{repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+        )
 
     @property
     def _aliases_contains_internals(self):
