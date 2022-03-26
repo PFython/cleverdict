@@ -109,8 +109,8 @@ version 1.5.1  2020-07-02
 -------------------------
 First version with the change log.
 
-Removed the no_expand context manager and introduced a more logical expand context manager. The context
-manager now restores the CleverDict.expand setting correctly upon exiting.
+Removed the no_expand context manager and introduced a more logical expand context manager.
+The context manager now restores the CleverDict.expand setting correctly upon exiting.
 
 Expansion can now be controlled by CleverDict.expand, instead of cleverdict.expand.
 
@@ -217,7 +217,6 @@ def get_app_dir(app_name, roaming=True, force_posix=False):
     """
     import sys
 
-    CYGWIN = sys.platform.startswith("cygwin")
     MSYS2 = sys.platform.startswith("win") and ("GCC" in sys.version)
     # Determine local App Engine environment, per Google's own suggestion
     APP_ENGINE = "APPENGINE_RUNTIME" in os.environ and "Development/" in os.environ.get(
@@ -280,7 +279,7 @@ def _preprocess_options(ignore, exclude, only):
         exclude = None
 
     if sum(x is not None for x in (ignore, exclude, only)) > 1:
-        raise TypeError(f"Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
+        raise TypeError("Only one argument from ['only=', 'ignore=', 'exclude='] allowed.")
 
     if only is not None:  # leave only is None for proper only tests
         only = set(only) if hasattr(only, "__iter__") and not isinstance(only, str) else {only}
@@ -380,8 +379,6 @@ class CleverDict(dict):
             for attribute, value in mapping._vars.items():
                 self.setattr_direct(attribute, value)
             self._aliases = mapping._aliases
-        else:
-            data = None
         with Expand(CleverDict.expand if _aliases is None else False):
             if save is not None:
                 self.set_autosave(save)
@@ -480,7 +477,8 @@ class CleverDict(dict):
             {k: v for k, v in self._aliases.items() if k not in self and v in mapping}
         )
         _vars = {k: v for k, v in vars(self).items() if k not in ignore}
-        return f"{self.__class__.__name__}({repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})"
+        return (f"{self.__class__.__name__}("
+                f"{repr(mapping)}, _aliases={repr(_aliases)}, _vars={repr(_vars)})")
 
     @property
     def _aliases_contains_internals(self):
