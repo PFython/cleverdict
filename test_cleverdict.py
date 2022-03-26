@@ -1,12 +1,14 @@
-from cleverdict import CleverDict, Expand, all_aliases
-import pytest
+import json
 import os
 from collections import UserDict
-from textwrap import dedent
-import json
-from pathlib import Path
-import keyring
 from itertools import permutations
+from pathlib import Path
+from textwrap import dedent
+
+import keyring
+import pytest
+
+from cleverdict import CleverDict, Expand, all_aliases
 
 
 def example_save_function(self, name=None, value=None):
@@ -669,6 +671,7 @@ class Test_Misc:
         """
         try:
             import click
+
             from cleverdict import get_app_dir
 
             assert click.get_app_dir("x") == get_app_dir("x")
