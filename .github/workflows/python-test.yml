@@ -38,7 +38,7 @@ jobs:
        - name: Install dependencies
          run: |
            pip install -U pip
-           pip install pytest
+           pip install pytest keyring keyrings.alt
        - name: Run pytest
          run: |
            pytest
