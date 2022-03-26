@@ -1409,7 +1409,7 @@ class Test_README_examples:
 
         CleverDict.save = your_save_function
         x = CleverDict()  # Ruud output should be checked in the test!
-        assert x.save.__doc__ == " Custom save function by you "
+        assert x.save.__doc__ == "Custom save function by you"
         CleverDict.save = CleverDict.original_save
 
     def test_YOUR_OWN_AUTOSAVE_2(self):
