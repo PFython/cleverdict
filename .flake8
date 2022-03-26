@@ -3,3 +3,11 @@ max-line-length = 100
 per-file-ignores =
     # imported but unused
     __init__.py: F401, F403
+
+    # we ignore long lines they occur in DESCRIPTION, KEYWORDS, CLASSIFIERS
+    setup.py: E501
+
+    # F841 local variable <foo> is assigned to but never used
+    # F601 dictionary key <foo> repeated with different values
+    # E501 we need to remove this in the future
+    test_cleverdict.py: F841, F601, E501

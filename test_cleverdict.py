@@ -326,7 +326,10 @@ class Test_Misc:
         assert x.info(ignore="Apples", as_str=True) == x.info(ignore=["Apples"], as_str=True)
 
     def test_fullcopy_plus_filter(self):
-        """fullcopy= can be used with other arguments only= ignore= or exclude=.  Error must be handled gracefully."""
+        """
+        fullcopy= can be used with other arguments only= ignore= or exclude=.
+        Error must be handled gracefully.
+        """
         x = CleverDict({"Apples": "Green", "Bananas": "Yellow", "Oranges": "Purple"})
         assert "Apples" not in x.to_json(fullcopy=True, ignore="Apples")
         assert "Apples" not in x.to_json(fullcopy=True, exclude="Apples")
@@ -334,8 +337,10 @@ class Test_Misc:
         assert "Bananas" not in x.to_json(fullcopy=True, only="Apples")
 
     def test_only_OR_ignore_OR_exclude_as_args(self):
-        """Only one of only=, ignore=, or exclude= can be given as an argument
-        for supported functions.  Error must be handled gracefully."""
+        """
+        Only one of only=, ignore=, or exclude= can be given as an argument
+        for supported functions.  Error must be handled gracefully.
+        """
         x = CleverDict({"Yes": "include me", "No": "exclude/ignore me"})
         for func in "__repr__() to_json() to_dict() to_list() to_lines() info(as_str=True)".split():
             perms = list(permutations(["only=", "ignore=", "exclude="]))
@@ -653,7 +658,8 @@ class Test_Misc:
 
     def test_get_app_dir(self):
         """
-        tests whether the cleverdict implementation of get_app_dir is ok (can only be tested if click is installed)
+        tests whether the cleverdict implementation of get_app_dir is ok
+        (can only be tested if click is installed)
         it will test only the right output on the OS the test is running on
         """
         try:
@@ -934,8 +940,8 @@ class Test_Internal_Logic:
     def test_setattr_direct(self):
         """
         Sets an attribute directly, i.e. without making it into an item.
-        Attributes set via setattr_direct will
-        expressly not appear in the result of repr().  They will appear in the result of str() however.
+        Attributes set via setattr_direct will expressly not appear in the result of repr().
+        They will appear in the result of str() however.
         """
         x = CleverDict()
         x.setattr_direct("a", "A")
